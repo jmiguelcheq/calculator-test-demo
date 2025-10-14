@@ -1,0 +1,5 @@
+com\example\runner\TestRunner.class
+com\example\steps\ApiSteps.class
+com\example\steps\UiSteps.class
+com\example\hooks\TestHooks.class
+com\example\steps\UnitSteps.class
