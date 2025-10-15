@@ -18,7 +18,7 @@ public class UnitSteps {
     		case"add"-> result=a+b;
     		case"subtract"-> result=a-b;
     		case"multiply"-> result=a*b;
-    		}
+		}
 	}
     
     @Then("the result should be {double}") 

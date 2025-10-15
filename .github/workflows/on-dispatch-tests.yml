@@ -1,0 +1,68 @@
+name: Run tests on repository_dispatch
+
+on:
+  repository_dispatch:
+    types: [ run-tests ]
+  workflow_dispatch: {}
+
+jobs:
+  tests:
+    name: Cucumber + Allure tests
+    runs-on: ubuntu-latest
+
+    env:
+      # Prefer value sent by Repo A; otherwise fall back to repo var/secret or a default
+      CALC_URL: ${{ github.event.client_payload.calc_url || vars.CALC_URL || secrets.CALC_URL || 'https://example.com' }}
+      HEADLESS: "true"
+
+    steps:
+      # Guard: only accept from the expected dev repo
+      - name: Validate sender repo
+        if: ${{ github.event_name == 'repository_dispatch' }}
+        run: |
+          SRC="${{ github.event.client_payload.source_repo }}"
+          EXPECTED="jmiguelcheq/calculator-demo"
+          if [ "$SRC" != "$EXPECTED" ]; then
+            echo "Unexpected sender: $SRC"; exit 1;
+          fi
+
+      - name: Checkout testing repo (this repo)
+        uses: actions/checkout@v4
+
+      # (Optional) If you need Repo A’s code at the exact SHA for any reason, uncomment:
+      # - name: Checkout dev repo at dispatched SHA
+      #   uses: actions/checkout@v4
+      #   with:
+      #     repository: jmiguelcheq/calculator-demo
+      #     ref: ${{ github.event.client_payload.sha }}
+      #     path: dev
+
+      - name: Set up Temurin JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Install Chrome (for UI tests)
+        uses: browser-actions/setup-chrome@v1
+
+      - name: Run Cucumber tests
+        run: mvn -B -q test
+
+      - name: Upload Allure results
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results
+          path: target/allure-results
+          
+      - name: Generate Allure single-file report
+        run: |
+          npx allure-commandline generate target/allure-results \
+            --single-file --output target/sample-report --clean
+
+      - name: Upload Allure single-file report
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-single-file
+          path: target/sample-report
