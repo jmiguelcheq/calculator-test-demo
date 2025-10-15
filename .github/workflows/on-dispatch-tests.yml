@@ -1,4 +1,4 @@
-name: Run tests on repository_dispatch
+name: Run tests on repository_dispatch (v2)
 
 on:
   repository_dispatch:
@@ -55,7 +55,7 @@ jobs:
         with:
           name: allure-results
           path: target/allure-results
-          
+
       - name: Generate Allure single-file report
         run: |
           npx allure-commandline generate target/allure-results \
