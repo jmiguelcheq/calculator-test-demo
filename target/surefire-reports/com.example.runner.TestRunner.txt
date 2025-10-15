@@ -1,4 +1,40 @@
 -------------------------------------------------------------------------------
 Test set: com.example.runner.TestRunner
 -------------------------------------------------------------------------------
-Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 7.170 s -- in com.example.runner.TestRunner
+Tests run: 5, Failures: 3, Errors: 0, Skipped: 0, Time elapsed: 6.520 s <<< FAILURE! -- in com.example.runner.TestRunner
+Calculator unit operations.Perform basic math #1 -- Time elapsed: 1.515 s <<< FAILURE!
+java.lang.AssertionError: 
+[Verify calculator result equals expected] 
+Expecting actual:
+  6.0
+to be close to:
+  5.0
+by less than 0.001 but difference was 1.0.
+(a difference of exactly 0.001 being considered valid)
+	at com.example.steps.UnitSteps.verify(UnitSteps.java:95)
+	at ✽.the result should be 5(file:///C:/Users/JunnelLMiguel/eclipse-workspace/calculator-test-demo/src/test/resources/features/unit_calculator.feature:6)
+
+Calculator unit operations.Perform basic math #2 -- Time elapsed: 0.322 s <<< FAILURE!
+java.lang.AssertionError: 
+[Verify calculator result equals expected] 
+Expecting actual:
+  7.0
+to be close to:
+  6.0
+by less than 0.001 but difference was 1.0.
+(a difference of exactly 0.001 being considered valid)
+	at com.example.steps.UnitSteps.verify(UnitSteps.java:95)
+	at ✽.the result should be 6(file:///C:/Users/JunnelLMiguel/eclipse-workspace/calculator-test-demo/src/test/resources/features/unit_calculator.feature:6)
+
+Calculator unit operations.Perform basic math #3 -- Time elapsed: 0.325 s <<< FAILURE!
+java.lang.AssertionError: 
+[Verify calculator result equals expected] 
+Expecting actual:
+  43.0
+to be close to:
+  42.0
+by less than 0.001 but difference was 1.0.
+(a difference of exactly 0.001 being considered valid)
+	at com.example.steps.UnitSteps.verify(UnitSteps.java:95)
+	at ✽.the result should be 42(file:///C:/Users/JunnelLMiguel/eclipse-workspace/calculator-test-demo/src/test/resources/features/unit_calculator.feature:6)
+

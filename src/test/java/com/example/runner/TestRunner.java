@@ -10,6 +10,6 @@ import io.cucumber.junit.CucumberOptions;
 		glue={"com.example.steps","com.example.hooks"},
 		plugin={"pretty","io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm"},
 		monochrome=true
-//		tags="@API"
+//		tags="@UI"
 )
 public class TestRunner {}
