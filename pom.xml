@@ -14,6 +14,12 @@
     <selenium.version>4.23.1</selenium.version>
   </properties>
   <dependencies>
+     <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.13.2</version> <!-- Use the latest JUnit 4 version -->
+      <scope>test</scope>
+    </dependency>
     <dependency>
       <groupId>io.cucumber</groupId>
       <artifactId>cucumber-java</artifactId>
@@ -57,7 +63,90 @@
   		<version>3.26.0</version>
   		<scope>test</scope>
 	</dependency>
+        
+	    <!-- JUnit 5 dependencies -->
+	    <dependency>
+	        <groupId>org.junit.jupiter</groupId>
+	        <artifactId>junit-jupiter-api</artifactId>
+	        <version>5.11.0</version> <!-- or latest version -->
+	    </dependency>
+	    
+	    <dependency>
+	        <groupId>org.junit.jupiter</groupId>
+	        <artifactId>junit-jupiter-engine</artifactId>
+	        <version>5.11.0</version> <!-- or latest version -->
+	        <scope>test</scope>
+	    </dependency>
+	    
+	    <!-- JUnit Platform dependency for Maven -->
+	    <dependency>
+	        <groupId>org.junit.platform</groupId>
+	        <artifactId>junit-platform-launcher</artifactId>
+	        <version>1.11.0</version> <!-- or latest version -->
+	        <scope>test</scope>
+	    </dependency>
+	    
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.15.0</version>
+        </dependency>
+        
+		<!-- https://mvnrepository.com/artifact/com.googlecode.json-simple/json-simple -->
+		<dependency>
+		    <groupId>com.googlecode.json-simple</groupId>
+		    <artifactId>json-simple</artifactId>
+		    <version>1.1.1</version>
+		</dependency>
+        
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>2.11.0</version>
+        </dependency>
+        
+        <dependency>
+            <groupId>tech.grasshopper</groupId>
+            <artifactId>extentreports-cucumber7-adapter</artifactId>
+            <version>1.14.0</version> <!-- Check for the latest version -->
+        </dependency>
 
+        <!-- Add the JUnit Vintage engine to support JUnit 4 tests -->
+        <dependency>
+            <groupId>org.junit.vintage</groupId>
+            <artifactId>junit-vintage-engine</artifactId>
+            <version>5.11.0</version>
+            <scope>test</scope>
+        </dependency>
+	    
+	    <dependency>
+	        <groupId>io.cucumber</groupId>
+	        <artifactId>cucumber-junit-platform-engine</artifactId>
+	        <version>7.18.1</version> 
+	        <scope>test</scope>
+	    </dependency>
+        
+        <!-- https://mvnrepository.com/artifact/io.cucumber/cucumber-testng -->
+		<dependency>
+		    <groupId>io.cucumber</groupId>
+		    <artifactId>cucumber-testng</artifactId>
+		    <version>7.18.1</version>
+		</dependency>
+		
+		<!-- https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-core -->
+		<dependency>
+		    <groupId>org.apache.logging.log4j</groupId>
+		    <artifactId>log4j-core</artifactId>
+		    <version>2.25.1</version>
+		</dependency>
+		
+		<!-- https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-api -->
+		<dependency>
+		    <groupId>org.apache.logging.log4j</groupId>
+		    <artifactId>log4j-api</artifactId>
+		    <version>2.25.1</version>
+		</dependency>
+	
   </dependencies>
   <build>
     <plugins>
