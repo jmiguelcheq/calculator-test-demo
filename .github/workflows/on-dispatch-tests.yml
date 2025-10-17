@@ -69,7 +69,95 @@
 
 
 
-name: Run tests on repository_dispatch (v3)
+# name: Run tests on repository_dispatch (v3)
+
+# on:
+#   repository_dispatch:
+#     types: [ run-tests ]
+#   workflow_dispatch:
+#     inputs:
+#       calc_url:
+#         description: "Base URL to test (manual fallback)"
+#         required: false
+#         type: string
+
+# jobs:
+#   tests:
+#     name: Cucumber + Allure tests
+#     runs-on: ubuntu-latest
+
+#     env:
+#       CALC_URL: ${{ github.event.client_payload.calc_url || inputs.calc_url || vars.CALC_URL || secrets.CALC_URL || 'https://jmiguelcheq.github.io/calculator-demo' }}
+#       HEADLESS: "true"
+
+#     steps:
+#       - name: Validate sender (only on repository_dispatch)
+#         if: ${{ github.event_name == 'repository_dispatch' }}
+#         run: |
+#           SRC="${{ github.event.client_payload.source_repo }}"
+#           EXPECTED="jmiguelcheq/calculator-demo"
+#           if [ "$SRC" != "$EXPECTED" ]; then
+#             echo "Unexpected sender: $SRC"; exit 1;
+#           fi
+
+#       - name: Checkout testing repo
+#         uses: actions/checkout@v4
+
+#       - name: Show resolved test URL
+#         run: |
+#           echo "BASE_URL=${CALC_URL}"
+#           test -n "${CALC_URL}" || (echo "CALC_URL is empty" && exit 1)
+
+#       - name: Set up Temurin JDK 17
+#         uses: actions/setup-java@v4
+#         with:
+#           distribution: temurin
+#           java-version: "17"
+#           cache: maven
+
+#       - name: Install Chrome (for UI tests)
+#         uses: browser-actions/setup-chrome@v1
+
+#       - name: Set up Node (for Allure CLI)
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: "20"
+
+#       - name: Install Allure CLI
+#         run: npm i -g allure-commandline@2
+
+#       - name: Run Cucumber tests
+#         env:
+#           BASE_URL: ${{ env.CALC_URL }}
+#         run: |
+#           set -e
+#           mvn -B clean test \
+#             -DbaseUrl="${CALC_URL}" \
+#             -Dheadless="${HEADLESS}"
+
+#       - name: Upload test reports
+#         if: ${{ failure() || success() }}
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: test-reports
+#           path: |
+#             **/target/surefire-reports/**
+#             **/target/cucumber-reports/**
+#             **/target/allure-results/**
+
+#       - name: Generate Allure single-file report
+#         if: ${{ always() }}
+#         run: |
+#           allure generate target/allure-results --single-file --clean -o target/allure-single
+
+#       - name: Upload Allure single-file report
+#         if: ${{ always() }}
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: allure-single-file
+#           path: target/allure-single
+
+name: Run tests on repository_dispatch (v4)
 
 on:
   repository_dispatch:
@@ -100,13 +188,8 @@ jobs:
             echo "Unexpected sender: $SRC"; exit 1;
           fi
 
-      - name: Checkout testing repo
+      - name: Checkout testing repo (this repo)
         uses: actions/checkout@v4
-
-      - name: Show resolved test URL
-        run: |
-          echo "BASE_URL=${CALC_URL}"
-          test -n "${CALC_URL}" || (echo "CALC_URL is empty" && exit 1)
 
       - name: Set up Temurin JDK 17
         uses: actions/setup-java@v4
@@ -118,22 +201,61 @@ jobs:
       - name: Install Chrome (for UI tests)
         uses: browser-actions/setup-chrome@v1
 
-      - name: Set up Node (for Allure CLI)
+      - name: Set up Node (for http-server & Allure)
         uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-      - name: Install Allure CLI
-        run: npm i -g allure-commandline@2
+      - name: Install Allure CLI + http-server
+        run: |
+          npm i -g allure-commandline@2 http-server@14
+
+      # ⬇⬇ NEW: checkout the app repo at EXACT SHA we dispatched
+      - name: Checkout app repo at dispatched SHA
+        if: ${{ github.event_name == 'repository_dispatch' }}
+        uses: actions/checkout@v4
+        with:
+          repository: jmiguelcheq/calculator-demo
+          ref: ${{ github.event.client_payload.sha }}
+          path: app
+          # If the app repo is private, add:
+          # token: ${{ secrets.CI_PAT }}
+
+      - name: Start local server (background)
+        if: ${{ github.event_name == 'repository_dispatch' }}
+        working-directory: app/src
+        run: |
+          npx http-server -p 8080 -c-1 --silent &
+          echo $! > /tmp/http-server.pid
+          for i in {1..10}; do
+            curl -fsS http://127.0.0.1:8080 && break || sleep 1
+          done
+
+      - name: Decide BASE_URL
+        id: baseurl
+        run: |
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            echo "BASE_URL=http://127.0.0.1:8080" >> $GITHUB_OUTPUT
+          else
+            echo "BASE_URL=${CALC_URL}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Show resolved test URL
+        run: echo "BASE_URL=${{ steps.baseurl.outputs.BASE_URL }}"
 
       - name: Run Cucumber tests
         env:
-          BASE_URL: ${{ env.CALC_URL }}
+          BASE_URL: ${{ steps.baseurl.outputs.BASE_URL }}
         run: |
           set -e
           mvn -B clean test \
-            -DbaseUrl="${CALC_URL}" \
+            -DbaseUrl="${BASE_URL}" \
             -Dheadless="${HEADLESS}"
+
+      - name: Stop local server
+        if: ${{ always() && github.event_name == 'repository_dispatch' }}
+        run: |
+          if [ -f /tmp/http-server.pid ]; then kill "$(cat /tmp/http-server.pid)" || true; fi
 
       - name: Upload test reports
         if: ${{ failure() || success() }}
@@ -147,8 +269,7 @@ jobs:
 
       - name: Generate Allure single-file report
         if: ${{ always() }}
-        run: |
-          allure generate target/allure-results --single-file --clean -o target/allure-single
+        run: allure generate target/allure-results --single-file --clean -o target/allure-single
 
       - name: Upload Allure single-file report
         if: ${{ always() }}
@@ -156,4 +277,3 @@ jobs:
         with:
           name: allure-single-file
           path: target/allure-single
-
