@@ -25,38 +25,6 @@ public class Hooks {
 	@Before
 	public void setUp(Scenario scenario) {
 		
-//		String env = System.getProperty("env", "dev");
-//		ConfigReader.loadProperties(env);
-//
-//		String browser = System.getProperty("browser", ConfigReader.get("BROWSER"));
-//		String url = ConfigReader.get("APP_URL");
-//        boolean headless = Boolean.parseBoolean(System.getProperty("headless", ConfigReader.get("HEADLESS")));
-//
-//		driver = WebDriverFactory.loadDriver(browser, headless);
-//		
-//        if (headless) {
-//            // set an explicit size so screenshots aren’t tiny/cropped
-//            driver.manage().window().setSize(new Dimension(1920, 1080));
-//        } else {
-//            driver.manage().window().maximize();
-//        }
-//        
-//		driver.get(url);
-//		DriverManager.setDriver(driver);
-//		
-//		allureUtil = new AllureUtil(driver);
-//		
-//		allureUtil.writeAllureEnvironment(
-//				ImmutableMap.<String, String>builder()
-//					.put("OS", System.getProperty("os.name"))
-//					.put("Browser", browser)
-//	                .put("Headless", String.valueOf(headless))
-//					.put("Environment", env)
-//					.build()
-//		);
-//		
-//		logger.info("Starting scenario: " + scenario.getName());
-		
         // 1) Load env file (default: dev)
         String env = System.getProperty("env", System.getenv().getOrDefault("ENV", "dev"));
         ConfigReader.loadProperties(env);
