@@ -86,10 +86,6 @@ public class Hooks {
 	
 	@After(order=1)
 	public void captureFailure(Scenario scenario) {
-//		if (scenario.isFailed()) {
-//			allureUtil.captureAndAttachScreenshot();
-//		}
-		
         if (scenario.isFailed() && allureUtil != null) {
             allureUtil.captureAndAttachScreenshot();
         }
@@ -97,13 +93,7 @@ public class Hooks {
 	
 	@AfterStep
 	public void afterEachStep(Scenario scenario) {
-//		allureUtil.captureAndAttachScreenshot();
-		
-        // Toggle heavy step-by-step screenshots via -DscreenshotEveryStep=true
-        boolean everyStep = Boolean.parseBoolean(System.getProperty(
-                "screenshotEveryStep",
-                System.getenv().getOrDefault("SCREENSHOT_EVERY_STEP", "false")));
-        if (everyStep && allureUtil != null) {
+        if (allureUtil != null) {
             allureUtil.captureAndAttachScreenshot();
         }
 	}
