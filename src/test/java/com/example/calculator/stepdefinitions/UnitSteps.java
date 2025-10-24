@@ -6,10 +6,7 @@ import static org.assertj.core.api.Assertions.within;
 
 import com.example.calculator.pages.LandingPage;
 import com.example.calculator_manager.DriverManager;
-import io.github.bonigarcia.wdm.WebDriverManager;
 import org.openqa.selenium.*;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
 
 /**
  * Cucumber steps that perform operations using the actual
@@ -20,8 +17,6 @@ public class UnitSteps {
 	WebDriver driver;
     private LandingPage landingPage;
     private double a, b;
-    private String operation;
-    private double actualResult;
     
     public UnitSteps() {
         this.driver = DriverManager.getDriver();
@@ -32,12 +27,13 @@ public class UnitSteps {
     public void nums(double a, double b) {
         this.a = a;
         this.b = b;
+        
+    	landingPage.inputNumberOne(String.valueOf(a));
+    	landingPage.inputNumberTwo(String.valueOf(b));
     }
 
     @When("I {word} them")
     public void performOperation(String operation) {
-    	landingPage.inputNumberOne(String.valueOf(a));
-    	landingPage.inputNumberTwo(String.valueOf(b));
     	landingPage.selectOperation(operation);
     	landingPage.clickCompute();
     }
