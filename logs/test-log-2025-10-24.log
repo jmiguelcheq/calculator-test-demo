@@ -1,0 +1,132 @@
+2025-10-24 08:18:55 [main] INFO  com.example.calculator.hooks.Hooks - Starting scenario: Perform basic math in bulk via table
+2025-10-24 08:18:55 [main] INFO  com.example.calculator.hooks.Hooks - Config → env=dev, browser=chrome, headless=true, baseUrl=https://jmiguelcheq.github.io/calculator-demo
+2025-10-24 08:18:55 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='a'] - Text: 2.0
+2025-10-24 08:18:55 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='b'] - Text: 3.0
+2025-10-24 08:18:55 [main] INFO  com.example.calculator.utils.ElementActionUtils - Select in the dropdown: By.xpath: //select[@id='op'] - Text: add
+2025-10-24 08:18:55 [main] INFO  com.example.calculator.utils.ElementActionUtils - Clicked on element: By.xpath: //button[@id='compute']
+2025-10-24 08:18:55 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='a'] - Text: 10.0
+2025-10-24 08:18:55 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='b'] - Text: 4.0
+2025-10-24 08:18:56 [main] INFO  com.example.calculator.utils.ElementActionUtils - Select in the dropdown: By.xpath: //select[@id='op'] - Text: sub
+2025-10-24 08:18:56 [main] INFO  com.example.calculator.utils.ElementActionUtils - Clicked on element: By.xpath: //button[@id='compute']
+2025-10-24 08:18:56 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='a'] - Text: 7.0
+2025-10-24 08:18:56 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='b'] - Text: 6.0
+2025-10-24 08:18:56 [main] INFO  com.example.calculator.utils.ElementActionUtils - Select in the dropdown: By.xpath: //select[@id='op'] - Text: mul
+2025-10-24 08:18:56 [main] INFO  com.example.calculator.utils.ElementActionUtils - Clicked on element: By.xpath: //button[@id='compute']
+2025-10-24 08:18:56 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='a'] - Text: 10.0
+2025-10-24 08:18:56 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='b'] - Text: 5.0
+2025-10-24 08:18:56 [main] INFO  com.example.calculator.utils.ElementActionUtils - Select in the dropdown: By.xpath: //select[@id='op'] - Text: div
+2025-10-24 08:18:56 [main] INFO  com.example.calculator.utils.ElementActionUtils - Clicked on element: By.xpath: //button[@id='compute']
+2025-10-24 08:18:57 [main] INFO  com.example.calculator.hooks.Hooks - Closing the browser.
+2025-10-24 08:33:42 [main] INFO  com.example.calculator.hooks.Hooks - Starting scenario: Perform basic math
+2025-10-24 08:33:42 [main] INFO  com.example.calculator.hooks.Hooks - Config → env=dev, browser=chrome, headless=true, baseUrl=https://jmiguelcheq.github.io/calculator-demo
+2025-10-24 08:33:42 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='a'] - Text: 3.0
+2025-10-24 08:33:42 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='b'] - Text: 3.0
+2025-10-24 08:33:42 [main] INFO  com.example.calculator.utils.ElementActionUtils - Select in the dropdown: By.xpath: //select[@id='op'] - Text: add
+2025-10-24 08:33:42 [main] INFO  com.example.calculator.utils.ElementActionUtils - Clicked on element: By.xpath: //button[@id='compute']
+2025-10-24 08:33:43 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='a'] - Text: 11.0
+2025-10-24 08:33:43 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='b'] - Text: 4.0
+2025-10-24 08:33:43 [main] INFO  com.example.calculator.utils.ElementActionUtils - Select in the dropdown: By.xpath: //select[@id='op'] - Text: sub
+2025-10-24 08:33:43 [main] INFO  com.example.calculator.utils.ElementActionUtils - Clicked on element: By.xpath: //button[@id='compute']
+2025-10-24 08:33:43 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='a'] - Text: 8.0
+2025-10-24 08:33:43 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='b'] - Text: 6.0
+2025-10-24 08:33:43 [main] INFO  com.example.calculator.utils.ElementActionUtils - Select in the dropdown: By.xpath: //select[@id='op'] - Text: mul
+2025-10-24 08:33:43 [main] INFO  com.example.calculator.utils.ElementActionUtils - Clicked on element: By.xpath: //button[@id='compute']
+2025-10-24 08:33:44 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='a'] - Text: 11.0
+2025-10-24 08:33:44 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='b'] - Text: 5.0
+2025-10-24 08:33:44 [main] INFO  com.example.calculator.utils.ElementActionUtils - Select in the dropdown: By.xpath: //select[@id='op'] - Text: div
+2025-10-24 08:33:44 [main] INFO  com.example.calculator.utils.ElementActionUtils - Clicked on element: By.xpath: //button[@id='compute']
+2025-10-24 08:33:45 [main] INFO  com.example.calculator.hooks.Hooks - Closing the browser.
+2025-10-24 08:39:18 [main] INFO  com.example.calculator.hooks.Hooks - Starting scenario: Perform basic math
+2025-10-24 08:39:18 [main] INFO  com.example.calculator.hooks.Hooks - Config → env=dev, browser=chrome, headless=true, baseUrl=https://jmiguelcheq.github.io/calculator-demo
+2025-10-24 08:39:18 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='a'] - Text: 2.0
+2025-10-24 08:39:18 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='b'] - Text: 3.0
+2025-10-24 08:39:18 [main] INFO  com.example.calculator.utils.ElementActionUtils - Select in the dropdown: By.xpath: //select[@id='op'] - Text: add
+2025-10-24 08:39:18 [main] INFO  com.example.calculator.utils.ElementActionUtils - Clicked on element: By.xpath: //button[@id='compute']
+2025-10-24 08:39:19 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='a'] - Text: 10.0
+2025-10-24 08:39:19 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='b'] - Text: 4.0
+2025-10-24 08:39:19 [main] INFO  com.example.calculator.utils.ElementActionUtils - Select in the dropdown: By.xpath: //select[@id='op'] - Text: sub
+2025-10-24 08:39:19 [main] INFO  com.example.calculator.utils.ElementActionUtils - Clicked on element: By.xpath: //button[@id='compute']
+2025-10-24 08:39:19 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='a'] - Text: 7.0
+2025-10-24 08:39:19 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='b'] - Text: 6.0
+2025-10-24 08:39:20 [main] INFO  com.example.calculator.utils.ElementActionUtils - Select in the dropdown: By.xpath: //select[@id='op'] - Text: mul
+2025-10-24 08:39:20 [main] INFO  com.example.calculator.utils.ElementActionUtils - Clicked on element: By.xpath: //button[@id='compute']
+2025-10-24 08:39:20 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='a'] - Text: 10.0
+2025-10-24 08:39:20 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='b'] - Text: 5.0
+2025-10-24 08:39:20 [main] INFO  com.example.calculator.utils.ElementActionUtils - Select in the dropdown: By.xpath: //select[@id='op'] - Text: div
+2025-10-24 08:39:20 [main] INFO  com.example.calculator.utils.ElementActionUtils - Clicked on element: By.xpath: //button[@id='compute']
+2025-10-24 08:39:21 [main] INFO  com.example.calculator.hooks.Hooks - Closing the browser.
+2025-10-24 08:40:22 [main] INFO  com.example.calculator.hooks.Hooks - Starting scenario: Perform basic math
+2025-10-24 08:40:22 [main] INFO  com.example.calculator.hooks.Hooks - Config → env=dev, browser=chrome, headless=true, baseUrl=https://jmiguelcheq.github.io/calculator-demo
+2025-10-24 08:40:23 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='a'] - Text: 2.0
+2025-10-24 08:40:23 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='b'] - Text: 3.0
+2025-10-24 08:40:23 [main] INFO  com.example.calculator.utils.ElementActionUtils - Select in the dropdown: By.xpath: //select[@id='op'] - Text: add
+2025-10-24 08:40:23 [main] INFO  com.example.calculator.utils.ElementActionUtils - Clicked on element: By.xpath: //button[@id='compute']
+2025-10-24 08:40:23 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='a'] - Text: 10.0
+2025-10-24 08:40:23 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='b'] - Text: 4.0
+2025-10-24 08:40:23 [main] INFO  com.example.calculator.utils.ElementActionUtils - Select in the dropdown: By.xpath: //select[@id='op'] - Text: sub
+2025-10-24 08:40:23 [main] INFO  com.example.calculator.utils.ElementActionUtils - Clicked on element: By.xpath: //button[@id='compute']
+2025-10-24 08:40:24 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='a'] - Text: 7.0
+2025-10-24 08:40:24 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='b'] - Text: 6.0
+2025-10-24 08:40:24 [main] INFO  com.example.calculator.utils.ElementActionUtils - Select in the dropdown: By.xpath: //select[@id='op'] - Text: mul
+2025-10-24 08:40:24 [main] INFO  com.example.calculator.utils.ElementActionUtils - Clicked on element: By.xpath: //button[@id='compute']
+2025-10-24 08:40:24 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='a'] - Text: 10.0
+2025-10-24 08:40:24 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='b'] - Text: 5.0
+2025-10-24 08:40:24 [main] INFO  com.example.calculator.utils.ElementActionUtils - Select in the dropdown: By.xpath: //select[@id='op'] - Text: div
+2025-10-24 08:40:24 [main] INFO  com.example.calculator.utils.ElementActionUtils - Clicked on element: By.xpath: //button[@id='compute']
+2025-10-24 08:40:25 [main] INFO  com.example.calculator.hooks.Hooks - Closing the browser.
+2025-10-24 08:42:57 [main] INFO  com.example.calculator.hooks.Hooks - Starting scenario: Perform basic math: (add)
+2025-10-24 08:42:57 [main] INFO  com.example.calculator.hooks.Hooks - Config → env=dev, browser=chrome, headless=true, baseUrl=https://jmiguelcheq.github.io/calculator-demo
+2025-10-24 08:42:57 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='a'] - Text: 2.0
+2025-10-24 08:42:57 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='b'] - Text: 3.0
+2025-10-24 08:42:57 [main] INFO  com.example.calculator.utils.ElementActionUtils - Select in the dropdown: By.xpath: //select[@id='op'] - Text: add
+2025-10-24 08:42:57 [main] INFO  com.example.calculator.utils.ElementActionUtils - Clicked on element: By.xpath: //button[@id='compute']
+2025-10-24 08:42:58 [main] INFO  com.example.calculator.hooks.Hooks - Closing the browser.
+2025-10-24 08:42:59 [main] INFO  com.example.calculator.hooks.Hooks - Starting scenario: Perform basic math: (subtract)
+2025-10-24 08:42:59 [main] INFO  com.example.calculator.hooks.Hooks - Config → env=dev, browser=chrome, headless=true, baseUrl=https://jmiguelcheq.github.io/calculator-demo
+2025-10-24 08:42:59 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='a'] - Text: 10.0
+2025-10-24 08:43:00 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='b'] - Text: 4.0
+2025-10-24 08:43:00 [main] INFO  com.example.calculator.utils.ElementActionUtils - Select in the dropdown: By.xpath: //select[@id='op'] - Text: sub
+2025-10-24 08:43:00 [main] INFO  com.example.calculator.utils.ElementActionUtils - Clicked on element: By.xpath: //button[@id='compute']
+2025-10-24 08:43:00 [main] INFO  com.example.calculator.hooks.Hooks - Closing the browser.
+2025-10-24 08:43:01 [main] INFO  com.example.calculator.hooks.Hooks - Starting scenario: Perform basic math: (multiply)
+2025-10-24 08:43:01 [main] INFO  com.example.calculator.hooks.Hooks - Config → env=dev, browser=chrome, headless=true, baseUrl=https://jmiguelcheq.github.io/calculator-demo
+2025-10-24 08:43:02 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='a'] - Text: 7.0
+2025-10-24 08:43:02 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='b'] - Text: 6.0
+2025-10-24 08:43:02 [main] INFO  com.example.calculator.utils.ElementActionUtils - Select in the dropdown: By.xpath: //select[@id='op'] - Text: mul
+2025-10-24 08:43:02 [main] INFO  com.example.calculator.utils.ElementActionUtils - Clicked on element: By.xpath: //button[@id='compute']
+2025-10-24 08:43:03 [main] INFO  com.example.calculator.hooks.Hooks - Closing the browser.
+2025-10-24 08:43:04 [main] INFO  com.example.calculator.hooks.Hooks - Starting scenario: Perform basic math: (divide)
+2025-10-24 08:43:04 [main] INFO  com.example.calculator.hooks.Hooks - Config → env=dev, browser=chrome, headless=true, baseUrl=https://jmiguelcheq.github.io/calculator-demo
+2025-10-24 08:43:04 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='a'] - Text: 10.0
+2025-10-24 08:43:04 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='b'] - Text: 5.0
+2025-10-24 08:43:04 [main] INFO  com.example.calculator.utils.ElementActionUtils - Select in the dropdown: By.xpath: //select[@id='op'] - Text: div
+2025-10-24 08:43:04 [main] INFO  com.example.calculator.utils.ElementActionUtils - Clicked on element: By.xpath: //button[@id='compute']
+2025-10-24 08:43:05 [main] INFO  com.example.calculator.hooks.Hooks - Closing the browser.
+2025-10-24 08:45:18 [main] INFO  com.example.calculator.hooks.Hooks - Starting scenario: Perform basic math: (add)
+2025-10-24 08:45:18 [main] INFO  com.example.calculator.hooks.Hooks - Config → env=dev, browser=chrome, headless=true, baseUrl=https://jmiguelcheq.github.io/calculator-demo
+2025-10-24 08:45:18 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='a'] - Text: 2.0
+2025-10-24 08:45:18 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='b'] - Text: 3.0
+2025-10-24 08:45:18 [main] INFO  com.example.calculator.utils.ElementActionUtils - Select in the dropdown: By.xpath: //select[@id='op'] - Text: add
+2025-10-24 08:45:18 [main] INFO  com.example.calculator.utils.ElementActionUtils - Clicked on element: By.xpath: //button[@id='compute']
+2025-10-24 08:45:19 [main] INFO  com.example.calculator.hooks.Hooks - Closing the browser.
+2025-10-24 08:45:20 [main] INFO  com.example.calculator.hooks.Hooks - Starting scenario: Perform basic math: (subtract)
+2025-10-24 08:45:20 [main] INFO  com.example.calculator.hooks.Hooks - Config → env=dev, browser=chrome, headless=true, baseUrl=https://jmiguelcheq.github.io/calculator-demo
+2025-10-24 08:45:20 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='a'] - Text: 10.0
+2025-10-24 08:45:20 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='b'] - Text: 4.0
+2025-10-24 08:45:21 [main] INFO  com.example.calculator.utils.ElementActionUtils - Select in the dropdown: By.xpath: //select[@id='op'] - Text: sub
+2025-10-24 08:45:21 [main] INFO  com.example.calculator.utils.ElementActionUtils - Clicked on element: By.xpath: //button[@id='compute']
+2025-10-24 08:45:21 [main] INFO  com.example.calculator.hooks.Hooks - Closing the browser.
+2025-10-24 08:45:22 [main] INFO  com.example.calculator.hooks.Hooks - Starting scenario: Perform basic math: (multiply)
+2025-10-24 08:45:22 [main] INFO  com.example.calculator.hooks.Hooks - Config → env=dev, browser=chrome, headless=true, baseUrl=https://jmiguelcheq.github.io/calculator-demo
+2025-10-24 08:45:22 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='a'] - Text: 7.0
+2025-10-24 08:45:22 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='b'] - Text: 6.0
+2025-10-24 08:45:23 [main] INFO  com.example.calculator.utils.ElementActionUtils - Select in the dropdown: By.xpath: //select[@id='op'] - Text: mul
+2025-10-24 08:45:23 [main] INFO  com.example.calculator.utils.ElementActionUtils - Clicked on element: By.xpath: //button[@id='compute']
+2025-10-24 08:45:23 [main] INFO  com.example.calculator.hooks.Hooks - Closing the browser.
+2025-10-24 08:45:24 [main] INFO  com.example.calculator.hooks.Hooks - Starting scenario: Perform basic math: (divide)
+2025-10-24 08:45:24 [main] INFO  com.example.calculator.hooks.Hooks - Config → env=dev, browser=chrome, headless=true, baseUrl=https://jmiguelcheq.github.io/calculator-demo
+2025-10-24 08:45:24 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='a'] - Text: 10.0
+2025-10-24 08:45:25 [main] INFO  com.example.calculator.utils.ElementActionUtils - Entered text in element: By.xpath: //input[@id='b'] - Text: 5.0
+2025-10-24 08:45:25 [main] INFO  com.example.calculator.utils.ElementActionUtils - Select in the dropdown: By.xpath: //select[@id='op'] - Text: div
+2025-10-24 08:45:25 [main] INFO  com.example.calculator.utils.ElementActionUtils - Clicked on element: By.xpath: //button[@id='compute']
+2025-10-24 08:45:25 [main] INFO  com.example.calculator.hooks.Hooks - Closing the browser.

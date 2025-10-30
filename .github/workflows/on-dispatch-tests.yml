@@ -1,4 +1,4 @@
-name: Run tests on repository_dispatch (v4)
+name: Run tests on repository_dispatch (v6 - with Grafana Loki)
 
 on:
   repository_dispatch:
@@ -9,6 +9,11 @@ on:
         description: "Base URL to test (manual fallback)"
         required: false
         type: string
+      env:
+        description: "Environment (dev|staging|prod)"
+        required: false
+        type: choice
+        options: [dev, staging, prod]
 
 jobs:
   tests:
@@ -18,6 +23,8 @@ jobs:
     env:
       CALC_URL: ${{ github.event.client_payload.calc_url || inputs.calc_url || vars.CALC_URL || secrets.CALC_URL || 'https://jmiguelcheq.github.io/calculator-demo' }}
       HEADLESS: "true"
+      PROJECT_NAME: calculator-demo
+      ENV: ${{ github.event.client_payload.env || inputs.env || vars.ENV || 'staging' }}
 
     steps:
       - name: Validate sender (only on repository_dispatch)
@@ -51,7 +58,7 @@ jobs:
         run: |
           npm i -g allure-commandline@2 http-server@14
 
-      # ⬇⬇ NEW: checkout the app repo at EXACT SHA we dispatched
+      # Checkout the app repo at the dispatched SHA when triggered from the app repo
       - name: Checkout app repo at dispatched SHA
         if: ${{ github.event_name == 'repository_dispatch' }}
         uses: actions/checkout@v4
@@ -59,8 +66,7 @@ jobs:
           repository: jmiguelcheq/calculator-demo
           ref: ${{ github.event.client_payload.sha }}
           path: app
-          # If the app repo is private, add:
-          # token: ${{ secrets.CI_PAT }}
+          # token: ${{ secrets.CI_PAT }}   # if the app repo is private
 
       - name: Start local server (background)
         if: ${{ github.event_name == 'repository_dispatch' }}
@@ -98,7 +104,8 @@ jobs:
         run: |
           if [ -f /tmp/http-server.pid ]; then kill "$(cat /tmp/http-server.pid)" || true; fi
 
-      - name: Upload test reports
+      # ---------- Reports & artifacts ----------
+      - name: Upload raw test reports (Surefire/Cucumber/Allure results)
         if: ${{ failure() || success() }}
         uses: actions/upload-artifact@v4
         with:
@@ -108,6 +115,22 @@ jobs:
             **/target/cucumber-reports/**
             **/target/allure-results/**
 
+      # Generate Allure HTML folder (creates widgets/summary.json)
+      - name: Generate Allure HTML (folder)
+        if: ${{ always() }}
+        run: |
+          # your results are under target/allure-results (matches your screenshot)
+          allure generate target/allure-results --clean -o allure-report
+          test -f allure-report/widgets/summary.json && echo "Allure summary found."
+
+      - name: Upload Allure HTML (folder)
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-html
+          path: allure-report
+
+      # Optional: single-file Allure
       - name: Generate Allure single-file report
         if: ${{ always() }}
         run: allure generate target/allure-results --single-file --clean -o target/allure-single
@@ -118,3 +141,116 @@ jobs:
         with:
           name: allure-single-file
           path: target/allure-single
+
+      # ---------- Push summary to Grafana Loki ----------
+      - name: Push test metrics to Grafana Loki
+        if: ${{ always() }}
+        env:
+          LOKI_URL: ${{ secrets.GRAFANA_LOKI_URL }}
+          LOKI_USER: ${{ secrets.GRAFANA_LOKI_USER }}
+          LOKI_TOKEN: ${{ secrets.GRAFANA_LOKI_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if ! command -v jq >/dev/null 2>&1; then
+            sudo apt-get update && sudo apt-get install -y jq
+          fi
+
+          PASSED=0; FAILED=0; BROKEN=0; SKIPPED=0; UNKNOWN=0; TOTAL=0; DURATION_MS=0;
+
+          if [ -f "allure-report/widgets/summary.json" ]; then
+            PASSED=$(jq '.statistic.passed'   allure-report/widgets/summary.json)
+            FAILED=$(jq '.statistic.failed'   allure-report/widgets/summary.json)
+            BROKEN=$(jq '.statistic.broken'   allure-report/widgets/summary.json)
+            SKIPPED=$(jq '.statistic.skipped' allure-report/widgets/summary.json)
+            UNKNOWN=$(jq '.statistic.unknown' allure-report/widgets/summary.json)
+            TOTAL=$(jq '.statistic.total'     allure-report/widgets/summary.json)
+            DURATION_MS=$(jq '.time.duration' allure-report/widgets/summary.json)
+          else
+            # Fallback: count result files if summary is missing
+            if compgen -G "target/allure-results/*.json" > /dev/null; then
+              TOTAL=$(ls -1 target/allure-results/*.json | wc -l | tr -d ' ')
+            fi
+          fi
+
+          REPO="${{ github.repository }}"
+          RUN_ID="${{ github.run_id }}"
+          RUN_NUMBER="${{ github.run_number }}"
+          SHA="${{ github.sha }}"
+          BRANCH="${{ github.ref_name }}"
+          WORKFLOW="${{ github.workflow }}"
+          JOB="${{ github.job }}"
+          TS_NS=$(date +%s%N)
+          TS_ISO=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          LOG_JSON=$(jq -n \
+            --arg repo "$REPO" \
+            --arg project "$PROJECT_NAME" \
+            --arg env "$ENV" \
+            --arg workflow "$WORKFLOW" \
+            --arg job "$JOB" \
+            --arg run_id "$RUN_ID" \
+            --arg run_number "$RUN_NUMBER" \
+            --arg sha "$SHA" \
+            --arg branch "$BRANCH" \
+            --arg base_url "${{ steps.baseurl.outputs.BASE_URL }}" \
+            --arg headless "${HEADLESS}" \
+            --arg ts_iso "$TS_ISO" \
+            --argjson passed ${PASSED:-0} \
+            --argjson failed ${FAILED:-0} \
+            --argjson broken ${BROKEN:-0} \
+            --argjson skipped ${SKIPPED:-0} \
+            --argjson unknown ${UNKNOWN:-0} \
+            --argjson total ${TOTAL:-0} \
+            --argjson duration_ms ${DURATION_MS:-0} \
+            '{
+              ts: $ts_iso,
+              repo: $repo,
+              project: $project,
+              env: $env,
+              workflow: $workflow,
+              job: $job,
+              run_id: $run_id,
+              run_number: $run_number,
+              sha: $sha,
+              branch: $branch,
+              base_url: $base_url,
+              headless: $headless,
+              passed: $passed,
+              failed: $failed,
+              broken: $broken,
+              skipped: $skipped,
+              unknown: $unknown,
+              total: $total,
+              duration_ms: $duration_ms,
+              pass_rate: (if $total > 0 then (($passed * 100.0) / $total) else 0 end)
+            }')
+
+          read -r -d '' STREAMS <<EOF
+          {
+            "streams": [
+              {
+                "stream": {
+                  "job": "ci-tests",
+                  "project": "${PROJECT_NAME}",
+                  "env": "${ENV}",
+                  "repo": "${REPO}",
+                  "branch": "${BRANCH}"
+                },
+                "values": [
+                  ["${TS_NS}", "${LOG_JSON//\"/\\\"}"]
+                ]
+              }
+            ]
+          }
+          EOF
+
+          code=$(curl -s -o /tmp/loki_resp.txt -w "%{http_code}" \
+            -u "${LOKI_USER}:${LOKI_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -X POST "${LOKI_URL}" \
+            --data-raw "${STREAMS}")
+
+          echo "Loki response code: ${code}"
+          test "${code}" -ge 200 -a "${code}" -lt 300
