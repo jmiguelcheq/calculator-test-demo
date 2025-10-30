@@ -1,4 +1,4 @@
-name: Run tests on repository_dispatch (v9 - with Grafana Loki)
+name: Run tests on repository_dispatch (v10 - with Grafana Loki)
 
 on:
   repository_dispatch:
@@ -65,6 +65,7 @@ jobs:
           repository: jmiguelcheq/calculator-demo
           ref: ${{ github.event.client_payload.sha }}
           path: app
+          # token: ${{ secrets.CI_PAT }}   # if the app repo is private
 
       - name: Start local server (background)
         if: ${{ github.event_name == 'repository_dispatch' }}
@@ -137,7 +138,7 @@ jobs:
           name: allure-single-file
           path: target/allure-single
 
-      # ---------- Push summary to Grafana Loki (probe + safe parsing) ----------
+      # ---------- Push summary to Grafana Loki (probe + safe parsing + jq payload) ----------
       - name: Push test metrics to Grafana Loki
         if: ${{ always() }}
         env:
@@ -148,146 +149,11 @@ jobs:
         run: |
           set -euo pipefail
 
-          # 0) Validate secrets are present (GitHub masks values in logs)
+          # Validate secrets
           for v in LOKI_URL LOKI_USER LOKI_TOKEN; do
-            if [ -z "${!v:-}" ]; then
-              echo "❌ Missing env: $v"; exit 1;
-            fi
+            if [ -z "${!v:-}" ]; then echo "❌ Missing env: $v"; exit 1; fi
           done
           echo "✅ Loki vars present. URL host: $(echo "$LOKI_URL" | sed -E 's#https?://([^/]+)/.*#\1#')"
 
           # Ensure jq
-          if ! command -v jq >/dev/null 2>&1; then
-            sudo apt-get update && sudo apt-get install -y jq
-          fi
-
-          # 1) Connectivity/auth probe: push a tiny line
-          TS_NS=$(date +%s%N)
-          PROBE=$(jq -n --arg ts "$TS_NS" '{"streams":[{"stream":{"job":"ci-probe"},"values":[[$ts,"probe"]]}]}')
-          probe_code=$(curl -s -o /tmp/loki_probe.txt -w "%{http_code}" \
-            -u "${LOKI_USER}:${LOKI_TOKEN}" \
-            -H "Content-Type: application/json" \
-            -X POST "${LOKI_URL}" \
-            --data-raw "${PROBE}")
-          echo "Probe code: ${probe_code}"
-          if [[ "${probe_code}" -lt 200 || "${probe_code}" -ge 300 ]]; then
-            echo "❌ Probe push failed. Response:"
-            cat /tmp/loki_probe.txt || true
-            echo "Hints:"
-            echo "- 401/403: bad token or wrong Stack ID (LOKI_USER)."
-            echo "- 404: wrong URL (must end with /loki/api/v1/push)."
-            echo "- 308/301/307: trailing slash/redirect issues, keep exact push path."
-            exit 1
-          fi
-          echo "✅ Probe OK."
-
-          # 2) Gather metrics from Allure (safe defaults; fallback to raw results)
-          PASSED=0; FAILED=0; BROKEN=0; SKIPPED=0; UNKNOWN=0; TOTAL=0; DURATION_MS=0;
-
-          if [ -f "allure-report/widgets/summary.json" ]; then
-            echo "Using allure-report/widgets/summary.json"
-            PASSED=$(jq -r '.statistic.passed  // 0' allure-report/widgets/summary.json)
-            FAILED=$(jq -r '.statistic.failed  // 0' allure-report/widgets/summary.json)
-            BROKEN=$(jq -r '.statistic.broken  // 0' allure-report/widgets/summary.json)
-            SKIPPED=$(jq -r '.statistic.skipped // 0' allure-report/widgets/summary.json)
-            UNKNOWN=$(jq -r '.statistic.unknown // 0' allure-report/widgets/summary.json)
-            TOTAL=$(jq -r '
-              if (.statistic.total? // null) != null
-                then .statistic.total
-                else (.statistic.passed // 0) + (.statistic.failed // 0) +
-                     (.statistic.broken // 0) + (.statistic.skipped // 0) +
-                     (.statistic.unknown // 0)
-              end
-            ' allure-report/widgets/summary.json)
-            DURATION_MS=$(jq -r '.time.duration // 0' allure-report/widgets/summary.json)
-
-          elif compgen -G "target/allure-results/*-result.json" > /dev/null; then
-            echo "summary.json not found — deriving metrics from target/allure-results/*-result.json"
-            PASSED=$(jq -s '[ .[] | select(.status=="passed") ]  | length' target/allure-results/*-result.json)
-            FAILED=$(jq -s '[ .[] | select(.status=="failed") ]  | length' target/allure-results/*-result.json)
-            BROKEN=$(jq -s '[ .[] | select(.status=="broken") ]  | length' target/allure-results/*-result.json)
-            SKIPPED=$(jq -s '[ .[] | select(.status=="skipped") ] | length' target/allure-results/*-result.json)
-            UNKNOWN=$(jq -s '[ .[] | select(.status=="unknown") ] | length' target/allure-results/*-result.json)
-            TOTAL=$((PASSED + FAILED + BROKEN + SKIPPED + UNKNOWN))
-            DURATION_MS=0
-          else
-            echo "⚠️ No Allure results found (summary.json or *-result.json). Skipping push to Loki."
-            exit 0
-          fi
-
-          echo "Parsed metrics -> total=$TOTAL passed=$PASSED failed=$FAILED broken=$BROKEN skipped=$SKIPPED unknown=$UNKNOWN duration_ms=$DURATION_MS"
-
-          # 3) Build CI metrics payload and push
-          REPO="${{ github.repository }}"
-          RUN_ID="${{ github.run_id }}"
-          RUN_NUMBER="${{ github.run_number }}"
-          SHA="${{ github.sha }}"
-          BRANCH="${{ github.ref_name }}"
-          WORKFLOW="${{ github.workflow }}"
-          JOB="${{ github.job }}"
-          TS_ISO=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          TS_METRIC=$(date +%s%N)
-
-          LOG_JSON=$(jq -n \
-            --arg repo "$REPO" \
-            --arg project "${PROJECT_NAME}" \
-            --arg env "${ENV}" \
-            --arg workflow "$WORKFLOW" \
-            --arg job "$JOB" \
-            --arg run_id "$RUN_ID" \
-            --arg run_number "$RUN_NUMBER" \
-            --arg sha "$SHA" \
-            --arg branch "$BRANCH" \
-            --arg base_url "${{ steps.baseurl.outputs.BASE_URL }}" \
-            --arg headless "${HEADLESS}" \
-            --arg ts_iso "$TS_ISO" \
-            --argjson passed ${PASSED:-0} \
-            --argjson failed ${FAILED:-0} \
-            --argjson broken ${BROKEN:-0} \
-            --argjson skipped ${SKIPPED:-0} \
-            --argjson unknown ${UNKNOWN:-0} \
-            --argjson total ${TOTAL:-0} \
-            --argjson duration_ms ${DURATION_MS:-0} \
-            '{
-              ts: $ts_iso, repo: $repo, project: $project, env: $env,
-              workflow: $workflow, job: $job, run_id: $run_id, run_number: $run_number,
-              sha: $sha, branch: $branch, base_url: $base_url, headless: $headless,
-              passed: $passed, failed: $failed, broken: $broken, skipped: $skipped,
-              unknown: $unknown, total: $total, duration_ms: $duration_ms,
-              pass_rate: (if $total > 0 then (($passed * 100.0) / $total) else 0 end)
-            }')
-
-          read -r -d '' STREAMS <<EOF
-          {
-            "streams": [
-              {
-                "stream": {
-                  "job": "ci-tests",
-                  "project": "${PROJECT_NAME}",
-                  "env": "${ENV}",
-                  "repo": "${REPO}",
-                  "branch": "${BRANCH}"
-                },
-                "values": [
-                  ["${TS_METRIC}", "${LOG_JSON//\"/\\\"}"]
-                ]
-              }
-            ]
-          }
-          EOF
-
-          code=$(curl -v -s -o /tmp/loki_resp.txt -w "%{http_code}" \
-            -u "${LOKI_USER}:${LOKI_TOKEN}" \
-            -H "Content-Type: application/json" \
-            -X POST "${LOKI_URL}" \
-            --data-raw "${STREAMS}")
-
-          echo "Loki response code: ${code}"
-          echo "Loki response body:"; cat /tmp/loki_resp.txt || echo "(empty)"
-
-          if [[ "${code}" -ge 200 && "${code}" -lt 300 ]]; then
-            echo "✅ Successfully pushed to Grafana Loki"
-          else
-            echo "❌ Failed to push to Grafana Loki (code: ${code})"
-            exit 1
-          fi
+          if ! command -v jq >/dev/null 2>&1;
