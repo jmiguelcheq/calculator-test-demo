@@ -1,4 +1,4 @@
-name: Run tests on repository_dispatch (v7 - with Grafana Loki)
+name: Run tests on repository_dispatch (v8 - with Grafana Loki)
 
 on:
   repository_dispatch:
@@ -58,7 +58,6 @@ jobs:
         run: |
           npm i -g allure-commandline@2 http-server@14
 
-      # Checkout the app repo at the dispatched SHA when triggered from the app repo
       - name: Checkout app repo at dispatched SHA
         if: ${{ github.event_name == 'repository_dispatch' }}
         uses: actions/checkout@v4
@@ -115,7 +114,6 @@ jobs:
             **/target/cucumber-reports/**
             **/target/allure-results/**
 
-      # Generate Allure HTML folder (creates widgets/summary.json)
       - name: Generate Allure HTML (folder)
         if: ${{ always() }}
         run: |
@@ -129,7 +127,6 @@ jobs:
           name: allure-html
           path: allure-report
 
-      # Optional: single-file Allure
       - name: Generate Allure single-file report
         if: ${{ always() }}
         run: allure generate target/allure-results --single-file --clean -o target/allure-single
@@ -152,27 +149,39 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Ensure jq
           if ! command -v jq >/dev/null 2>&1; then
             sudo apt-get update && sudo apt-get install -y jq
           fi
 
           PASSED=0; FAILED=0; BROKEN=0; SKIPPED=0; UNKNOWN=0; TOTAL=0; DURATION_MS=0;
 
+          # Preferred: use Allure HTML summary if available (safe defaults + recompute total)
           if [ -f "allure-report/widgets/summary.json" ]; then
             echo "Using allure-report/widgets/summary.json"
-            PASSED=$(jq '.statistic.passed'   allure-report/widgets/summary.json)
-            FAILED=$(jq '.statistic.failed'   allure-report/widgets/summary.json)
-            BROKEN=$(jq '.statistic.broken'   allure-report/widgets/summary.json)
-            SKIPPED=$(jq '.statistic.skipped' allure-report/widgets/summary.json)
-            UNKNOWN=$(jq '.statistic.unknown' allure-report/widgets/summary.json)
-            TOTAL=$(jq '.statistic.total'     allure-report/widgets/summary.json)
-            DURATION_MS=$(jq '.time.duration' allure-report/widgets/summary.json)
+
+            PASSED=$(jq -r '.statistic.passed  // 0' allure-report/widgets/summary.json)
+            FAILED=$(jq -r '.statistic.failed  // 0' allure-report/widgets/summary.json)
+            BROKEN=$(jq -r '.statistic.broken  // 0' allure-report/widgets/summary.json)
+            SKIPPED=$(jq -r '.statistic.skipped // 0' allure-report/widgets/summary.json)
+            UNKNOWN=$(jq -r '.statistic.unknown // 0' allure-report/widgets/summary.json)
+
+            TOTAL=$(jq -r '
+              if (.statistic.total? // null) != null
+                then .statistic.total
+                else (.statistic.passed // 0) + (.statistic.failed // 0) +
+                     (.statistic.broken // 0) + (.statistic.skipped // 0) +
+                     (.statistic.unknown // 0)
+              end
+            ' allure-report/widgets/summary.json)
+
+            DURATION_MS=$(jq -r '.time.duration // 0' allure-report/widgets/summary.json)
+
+          # Fallback: derive from raw Allure results if summary.json missing
           elif compgen -G "target/allure-results/*-result.json" > /dev/null; then
             echo "summary.json not found — deriving metrics from target/allure-results/*-result.json"
-            PASSED=$(jq -s '[ .[] | select(.status=="passed") ] | length'  target/allure-results/*-result.json)
-            FAILED=$(jq -s '[ .[] | select(.status=="failed") ] | length'  target/allure-results/*-result.json)
-            BROKEN=$(jq -s '[ .[] | select(.status=="broken") ] | length'  target/allure-results/*-result.json)
+            PASSED=$(jq -s '[ .[] | select(.status=="passed") ]  | length' target/allure-results/*-result.json)
+            FAILED=$(jq -s '[ .[] | select(.status=="failed") ]  | length' target/allure-results/*-result.json)
+            BROKEN=$(jq -s '[ .[] | select(.status=="broken") ]  | length' target/allure-results/*-result.json)
             SKIPPED=$(jq -s '[ .[] | select(.status=="skipped") ] | length' target/allure-results/*-result.json)
             UNKNOWN=$(jq -s '[ .[] | select(.status=="unknown") ] | length' target/allure-results/*-result.json)
             TOTAL=$((PASSED + FAILED + BROKEN + SKIPPED + UNKNOWN))
@@ -181,6 +190,8 @@ jobs:
             echo "⚠️ No Allure results found (summary.json or *-result.json). Skipping push to Loki."
             exit 0
           fi
+
+          echo "Parsed metrics -> total=$TOTAL passed=$PASSED failed=$FAILED broken=$BROKEN skipped=$SKIPPED unknown=$UNKNOWN duration_ms=$DURATION_MS"
 
           REPO="${{ github.repository }}"
           RUN_ID="${{ github.run_id }}"
