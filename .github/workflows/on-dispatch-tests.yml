@@ -119,7 +119,6 @@ jobs:
       - name: Generate Allure HTML (folder)
         if: ${{ always() }}
         run: |
-          # your results are under target/allure-results (matches your screenshot)
           allure generate target/allure-results --clean -o allure-report
           test -f allure-report/widgets/summary.json && echo "Allure summary found."
 
@@ -252,7 +251,7 @@ jobs:
             -X POST "${LOKI_URL}" \
             --data-raw "${STREAMS}")
 
-		  echo "Loki response code: ${code}"
-		  echo "Loki response body:"
-		  cat /tmp/loki_resp.txt || echo "(no response body)"
-		  test "${code}" -ge 200 -a "${code}" -lt 300
+          echo "Loki response code: ${code}"
+          echo "Loki response body:"
+          cat /tmp/loki_resp.txt || echo "(no response body)"
+          test "${code}" -ge 200 -a "${code}" -lt 300
