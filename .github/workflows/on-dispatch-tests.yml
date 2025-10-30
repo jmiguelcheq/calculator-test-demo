@@ -1,4 +1,4 @@
-name: Run tests on repository_dispatch (v6 - with Grafana Loki)
+name: Run tests on repository_dispatch (v7 - with Grafana Loki)
 
 on:
   repository_dispatch:
@@ -141,7 +141,7 @@ jobs:
           name: allure-single-file
           path: target/allure-single
 
-      # ---------- Push summary to Grafana Loki ----------
+      # ---------- Push summary to Grafana Loki (tolerant & verbose) ----------
       - name: Push test metrics to Grafana Loki
         if: ${{ always() }}
         env:
@@ -152,6 +152,7 @@ jobs:
         run: |
           set -euo pipefail
 
+          # Ensure jq
           if ! command -v jq >/dev/null 2>&1; then
             sudo apt-get update && sudo apt-get install -y jq
           fi
@@ -159,6 +160,7 @@ jobs:
           PASSED=0; FAILED=0; BROKEN=0; SKIPPED=0; UNKNOWN=0; TOTAL=0; DURATION_MS=0;
 
           if [ -f "allure-report/widgets/summary.json" ]; then
+            echo "Using allure-report/widgets/summary.json"
             PASSED=$(jq '.statistic.passed'   allure-report/widgets/summary.json)
             FAILED=$(jq '.statistic.failed'   allure-report/widgets/summary.json)
             BROKEN=$(jq '.statistic.broken'   allure-report/widgets/summary.json)
@@ -166,11 +168,18 @@ jobs:
             UNKNOWN=$(jq '.statistic.unknown' allure-report/widgets/summary.json)
             TOTAL=$(jq '.statistic.total'     allure-report/widgets/summary.json)
             DURATION_MS=$(jq '.time.duration' allure-report/widgets/summary.json)
+          elif compgen -G "target/allure-results/*-result.json" > /dev/null; then
+            echo "summary.json not found — deriving metrics from target/allure-results/*-result.json"
+            PASSED=$(jq -s '[ .[] | select(.status=="passed") ] | length'  target/allure-results/*-result.json)
+            FAILED=$(jq -s '[ .[] | select(.status=="failed") ] | length'  target/allure-results/*-result.json)
+            BROKEN=$(jq -s '[ .[] | select(.status=="broken") ] | length'  target/allure-results/*-result.json)
+            SKIPPED=$(jq -s '[ .[] | select(.status=="skipped") ] | length' target/allure-results/*-result.json)
+            UNKNOWN=$(jq -s '[ .[] | select(.status=="unknown") ] | length' target/allure-results/*-result.json)
+            TOTAL=$((PASSED + FAILED + BROKEN + SKIPPED + UNKNOWN))
+            DURATION_MS=0
           else
-            # Fallback: count result files if summary is missing
-            if compgen -G "target/allure-results/*.json" > /dev/null; then
-              TOTAL=$(ls -1 target/allure-results/*.json | wc -l | tr -d ' ')
-            fi
+            echo "⚠️ No Allure results found (summary.json or *-result.json). Skipping push to Loki."
+            exit 0
           fi
 
           REPO="${{ github.repository }}"
@@ -185,8 +194,8 @@ jobs:
 
           LOG_JSON=$(jq -n \
             --arg repo "$REPO" \
-            --arg project "$PROJECT_NAME" \
-            --arg env "$ENV" \
+            --arg project "${PROJECT_NAME}" \
+            --arg env "${ENV}" \
             --arg workflow "$WORKFLOW" \
             --arg job "$JOB" \
             --arg run_id "$RUN_ID" \
@@ -204,25 +213,11 @@ jobs:
             --argjson total ${TOTAL:-0} \
             --argjson duration_ms ${DURATION_MS:-0} \
             '{
-              ts: $ts_iso,
-              repo: $repo,
-              project: $project,
-              env: $env,
-              workflow: $workflow,
-              job: $job,
-              run_id: $run_id,
-              run_number: $run_number,
-              sha: $sha,
-              branch: $branch,
-              base_url: $base_url,
-              headless: $headless,
-              passed: $passed,
-              failed: $failed,
-              broken: $broken,
-              skipped: $skipped,
-              unknown: $unknown,
-              total: $total,
-              duration_ms: $duration_ms,
+              ts: $ts_iso, repo: $repo, project: $project, env: $env,
+              workflow: $workflow, job: $job, run_id: $run_id, run_number: $run_number,
+              sha: $sha, branch: $branch, base_url: $base_url, headless: $headless,
+              passed: $passed, failed: $failed, broken: $broken, skipped: $skipped,
+              unknown: $unknown, total: $total, duration_ms: $duration_ms,
               pass_rate: (if $total > 0 then (($passed * 100.0) / $total) else 0 end)
             }')
 
@@ -245,13 +240,18 @@ jobs:
           }
           EOF
 
-          code=$(curl -s -o /tmp/loki_resp.txt -w "%{http_code}" \
+          code=$(curl -v -s -o /tmp/loki_resp.txt -w "%{http_code}" \
             -u "${LOKI_USER}:${LOKI_TOKEN}" \
             -H "Content-Type: application/json" \
             -X POST "${LOKI_URL}" \
             --data-raw "${STREAMS}")
 
           echo "Loki response code: ${code}"
-          echo "Loki response body:"
-          cat /tmp/loki_resp.txt || echo "(no response body)"
-          test "${code}" -ge 200 -a "${code}" -lt 300
+          echo "Loki response body:"; cat /tmp/loki_resp.txt || echo "(empty)"
+
+          if [[ "${code}" -ge 200 && "${code}" -lt 300 ]]; then
+            echo "✅ Successfully pushed to Grafana Loki"
+          else
+            echo "❌ Failed to push to Grafana Loki (code: ${code})"
+            exit 1
+          fi
