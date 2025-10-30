@@ -252,5 +252,7 @@ jobs:
             -X POST "${LOKI_URL}" \
             --data-raw "${STREAMS}")
 
-          echo "Loki response code: ${code}"
-          test "${code}" -ge 200 -a "${code}" -lt 300
+		  echo "Loki response code: ${code}"
+		  echo "Loki response body:"
+		  cat /tmp/loki_resp.txt || echo "(no response body)"
+		  test "${code}" -ge 200 -a "${code}" -lt 300
