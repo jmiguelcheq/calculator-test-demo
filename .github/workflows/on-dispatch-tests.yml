@@ -4,16 +4,6 @@ on:
   repository_dispatch:
     types: [ run-tests ]
   workflow_dispatch:
-    inputs:
-      calc_url:
-        description: "Base URL to test (manual fallback)"
-        required: false
-        type: string
-      env:
-        description: "Environment (dev|staging|prod)"
-        required: false
-        type: choice
-        options: [dev, staging, prod]
 
 jobs:
   tests:
@@ -21,10 +11,10 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      CALC_URL: ${{ github.event.client_payload.calc_url || inputs.calc_url || vars.CALC_URL || secrets.CALC_URL || 'https://jmiguelcheq.github.io/calculator-demo' }}
+      CALC_URL: ${{ github.event.client_payload.calc_url || vars.CALC_URL || secrets.CALC_URL || 'https://jmiguelcheq.github.io/calculator-demo' }}
       HEADLESS: "true"
       PROJECT_NAME: calculator-demo
-      ENV: ${{ github.event.client_payload.env || inputs.env || vars.ENV || 'staging' }}
+      ENV: ${{ github.event.client_payload.env || vars.ENV || 'staging' }}
 
     steps:
       - name: Validate sender (only on repository_dispatch)
