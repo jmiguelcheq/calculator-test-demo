@@ -253,7 +253,7 @@ jobs:
             '{
               streams: [
                 {
-                  stream: { job: $job, project: $project, env: $env, repo: $repo, branch: $branch },
+                  stream: { job: $job, project: $project, env: $env, repo: $repo, branch: $branch, run_id: $run_id },
                   values: [[ $ts, $line ]]
                 }
               ]
