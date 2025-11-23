@@ -1,4 +1,4 @@
-name: Run tests on repository_dispatch (v10 - with Grafana Loki)
+name: Run tests on repository_dispatch
 
 on:
   repository_dispatch:
@@ -48,8 +48,9 @@ jobs:
         run: |
           npm i -g allure-commandline@2 http-server@14
 
-      - name: Checkout app repo at dispatched SHA
-        if: ${{ github.event_name == 'repository_dispatch' }}
+      # -------- PR mode: local app checkout + local server --------
+      - name: Checkout app repo at dispatched SHA (PR mode)
+        if: ${{ github.event_name == 'repository_dispatch' && env.ENV == 'pr' }}
         uses: actions/checkout@v4
         with:
           repository: jmiguelcheq/calculator-demo
@@ -57,8 +58,8 @@ jobs:
           path: app
           # token: ${{ secrets.CI_PAT }}   # if the app repo is private
 
-      - name: Start local server (background)
-        if: ${{ github.event_name == 'repository_dispatch' }}
+      - name: Start local server (background, PR mode)
+        if: ${{ github.event_name == 'repository_dispatch' && env.ENV == 'pr' }}
         working-directory: app/src
         run: |
           npx http-server -p 8080 -c-1 --silent &
@@ -70,7 +71,7 @@ jobs:
       - name: Decide BASE_URL
         id: baseurl
         run: |
-          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+          if [ "${{ github.event_name }}" = "repository_dispatch" ] && [ "${ENV}" = "pr" ]; then
             echo "BASE_URL=http://127.0.0.1:8080" >> $GITHUB_OUTPUT
           else
             echo "BASE_URL=${CALC_URL}" >> $GITHUB_OUTPUT
@@ -88,8 +89,8 @@ jobs:
             -DbaseUrl="${BASE_URL}" \
             -Dheadless="${HEADLESS}"
 
-      - name: Stop local server
-        if: ${{ always() && github.event_name == 'repository_dispatch' }}
+      - name: Stop local server (PR mode)
+        if: ${{ always() && github.event_name == 'repository_dispatch' && env.ENV == 'pr' }}
         run: |
           if [ -f /tmp/http-server.pid ]; then kill "$(cat /tmp/http-server.pid)" || true; fi
 
@@ -128,7 +129,7 @@ jobs:
           name: allure-single-file
           path: target/allure-single
 
-      # ---------- Push summary to Grafana Loki (probe + safe parsing + jq payload) ----------
+      # ---------- Push summary to Grafana Loki ----------
       - name: Push test metrics to Grafana Loki
         if: ${{ always() }}
         env:
@@ -201,7 +202,7 @@ jobs:
 
           echo "Parsed metrics -> total=$TOTAL passed=$PASSED failed=$FAILED broken=$BROKEN skipped=$SKIPPED unknown=$UNKNOWN duration_ms=$DURATION_MS"
 
-          # Build the log line with jq (no read -d '')
+          # Build the log line with jq
           REPO="${{ github.repository }}"
           RUN_ID="${{ github.run_id }}"
           RUN_NUMBER="${{ github.run_number }}"
