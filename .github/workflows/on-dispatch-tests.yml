@@ -15,6 +15,7 @@ jobs:
       HEADLESS: "true"
       PROJECT_NAME: calculator-demo
       ENV: ${{ github.event.client_payload.env || vars.ENV || 'staging' }}
+      MODE: ${{ github.event.client_payload.mode || 'staging-smoke' }}
 
     steps:
       - name: Validate sender (only on repository_dispatch)
@@ -50,7 +51,7 @@ jobs:
 
       # -------- PR mode: local app checkout + local server --------
       - name: Checkout app repo at dispatched SHA (PR mode)
-        if: ${{ github.event_name == 'repository_dispatch' && env.ENV == 'pr' }}
+        if: ${{ github.event_name == 'repository_dispatch' && env.MODE == 'pr' }}
         uses: actions/checkout@v4
         with:
           repository: jmiguelcheq/calculator-demo
@@ -59,7 +60,7 @@ jobs:
           # token: ${{ secrets.CI_PAT }}   # if the app repo is private
 
       - name: Start local server (background, PR mode)
-        if: ${{ github.event_name == 'repository_dispatch' && env.ENV == 'pr' }}
+        if: ${{ github.event_name == 'repository_dispatch' && env.MODE == 'pr' }}
         working-directory: app/src
         run: |
           npx http-server -p 8080 -c-1 --silent &
@@ -71,7 +72,7 @@ jobs:
       - name: Decide BASE_URL
         id: baseurl
         run: |
-          if [ "${{ github.event_name }}" = "repository_dispatch" ] && [ "${ENV}" = "pr" ]; then
+          if [ "${{ github.event_name }}" = "repository_dispatch" ] && [ "${MODE}" = "pr" ]; then
             echo "BASE_URL=http://127.0.0.1:8080" >> $GITHUB_OUTPUT
           else
             echo "BASE_URL=${CALC_URL}" >> $GITHUB_OUTPUT
@@ -83,14 +84,17 @@ jobs:
       - name: Run Cucumber tests
         env:
           BASE_URL: ${{ steps.baseurl.outputs.BASE_URL }}
+          ENV: ${{ env.ENV }}
         run: |
           set -e
+          # Your framework likely reads ENV from env or from a system property;
+          # if needed you can add: -Denv="${ENV}"
           mvn -B clean test \
             -DbaseUrl="${BASE_URL}" \
             -Dheadless="${HEADLESS}"
 
       - name: Stop local server (PR mode)
-        if: ${{ always() && github.event_name == 'repository_dispatch' && env.ENV == 'pr' }}
+        if: ${{ always() && github.event_name == 'repository_dispatch' && env.MODE == 'pr' }}
         run: |
           if [ -f /tmp/http-server.pid ]; then kill "$(cat /tmp/http-server.pid)" || true; fi
 
@@ -202,7 +206,6 @@ jobs:
 
           echo "Parsed metrics -> total=$TOTAL passed=$PASSED failed=$FAILED broken=$BROKEN skipped=$SKIPPED unknown=$UNKNOWN duration_ms=$DURATION_MS"
 
-          # Build the log line with jq
           REPO="${{ github.repository }}"
           RUN_ID="${{ github.run_id }}"
           RUN_NUMBER="${{ github.run_number }}"
@@ -254,7 +257,7 @@ jobs:
             '{
               streams: [
                 {
-                  stream: { job: $job, project: $project, env: $env, repo: $repo, branch: $branch, run_id: $run_id },
+                  stream: { job: $job, project: $project, env: $project, repo: $repo, branch: $branch, run_id: $run_id },
                   values: [[ $ts, $line ]]
                 }
               ]
