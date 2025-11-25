@@ -24,7 +24,8 @@ jobs:
           SRC="${{ github.event.client_payload.source_repo }}"
           EXPECTED="jmiguelcheq/calculator-demo"
           if [ "$SRC" != "$EXPECTED" ]; then
-            echo "Unexpected sender: $SRC"; exit 1;
+            echo "Unexpected sender: $SRC"
+            exit 1
           fi
 
       - name: Checkout testing repo (this repo)
@@ -73,9 +74,9 @@ jobs:
         id: baseurl
         run: |
           if [ "${{ github.event_name }}" = "repository_dispatch" ] && [ "${MODE}" = "pr" ]; then
-            echo "BASE_URL=http://127.0.0.1:8080" >> $GITHUB_OUTPUT
+            echo "BASE_URL=http://127.0.0.1:8080" >> "$GITHUB_OUTPUT"
           else
-            echo "BASE_URL=${CALC_URL}" >> $GITHUB_OUTPUT
+            echo "BASE_URL=${CALC_URL}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Show resolved test URL
@@ -94,7 +95,9 @@ jobs:
       - name: Stop local server (PR mode)
         if: ${{ always() && github.event_name == 'repository_dispatch' && env.MODE == 'pr' }}
         run: |
-          if [ -f /tmp/http-server.pid ]; then kill "$(cat /tmp/http-server.pid)" || true; fi
+          if [ -f /tmp/http-server.pid ]; then
+            kill "$(cat /tmp/http-server.pid)" || true
+          fi
 
       # ---------- Reports & artifacts ----------
       - name: Upload raw test reports (Surefire/Cucumber/Allure results)
@@ -111,7 +114,9 @@ jobs:
         if: ${{ always() }}
         run: |
           allure generate target/allure-results --clean -o allure-report
-          test -f allure-report/widgets/summary.json && echo "Allure summary found."
+          if [ -f allure-report/widgets/summary.json ]; then
+            echo "Allure summary found."
+          fi
 
       - name: Upload Allure HTML (folder)
         if: ${{ always() }}
@@ -122,7 +127,8 @@ jobs:
 
       - name: Generate Allure single-file report
         if: ${{ always() }}
-        run: allure generate target/allure-results --single-file --clean -o target/allure-single
+        run: |
+          allure generate target/allure-results --single-file --clean -o target/allure-single
 
       - name: Upload Allure single-file report
         if: ${{ always() }}
@@ -131,107 +137,108 @@ jobs:
           name: allure-single-file
           path: target/allure-single
 
-	  # ---------- Push summary metrics to Grafana Prometheus ----------
-	  - name: Push test metrics to Grafana Prometheus
-	    if: ${{ always() }}
-	    env:
-	      GRAFANA_PROM_URL: ${{ secrets.GRAFANA_PROM_URL }}
-	      GRAFANA_PROM_USER: ${{ secrets.GRAFANA_PROM_USER }}
-	      GRAFANA_PROM_API_KEY: ${{ secrets.GRAFANA_PROM_API_KEY }}
-	      PROJECT_NAME: ${{ env.PROJECT_NAME }}
-	      ENVIRONMENT: ${{ env.ENV }}
-	      BRANCH_NAME: ${{ github.ref_name }}
-	    shell: bash
-	    run: |
-	      set -euo pipefail
+      # ---------- Push summary metrics to Grafana Prometheus ----------
+      - name: Push test metrics to Grafana Prometheus
+        if: ${{ always() }}
+        env:
+          GRAFANA_PROM_URL: ${{ secrets.GRAFANA_PROM_URL }}
+          GRAFANA_PROM_USER: ${{ secrets.GRAFANA_PROM_USER }}
+          GRAFANA_PROM_API_KEY: ${{ secrets.GRAFANA_PROM_API_KEY }}
+          PROJECT_NAME: ${{ env.PROJECT_NAME }}
+          ENVIRONMENT: ${{ env.ENV }}
+          BRANCH_NAME: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
 
-	      # Skip if Prometheus secrets are not configured
-	      if [ -z "${GRAFANA_PROM_URL:-}" ] || [ -z "${GRAFANA_PROM_USER:-}" ] || [ -z "${GRAFANA_PROM_API_KEY:-}" ]; then
-	        echo "⚠️ Grafana Prometheus secrets not set. Skipping metrics push."
-	        exit 0
-	      fi
+          # Skip if Prometheus secrets are not configured
+          if [ -z "${GRAFANA_PROM_URL:-}" ] || [ -z "${GRAFANA_PROM_USER:-}" ] || [ -z "${GRAFANA_PROM_API_KEY:-}" ]; then
+            echo "Grafana Prometheus secrets not set. Skipping metrics push."
+            exit 0
+          fi
 
-	      # Ensure jq is available
-	      if ! command -v jq >/dev/null 2>&1; then
-	        sudo apt-get update && sudo apt-get install -y jq
-	      fi
+          # Ensure jq is available
+          if ! command -v jq >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y jq
+          fi
 
-	      if [ ! -f "allure-report/widgets/summary.json" ]; then
-	        echo "⚠️ Allure summary.json not found. Skipping Prometheus push."
-	        exit 0
-	      fi
+          if [ ! -f "allure-report/widgets/summary.json" ]; then
+            echo "Allure summary.json not found. Skipping Prometheus push."
+            exit 0
+          fi
 
-	      PASSED=$(jq -r '.statistic.passed  // 0'   allure-report/widgets/summary.json)
-	      FAILED=$(jq -r '.statistic.failed  // 0'   allure-report/widgets/summary.json)
-	      BROKEN=$(jq -r '.statistic.broken  // 0'   allure-report/widgets/summary.json)
-	      SKIPPED=$(jq -r '.statistic.skipped // 0'  allure-report/widgets/summary.json)
-	      UNKNOWN=$(jq -r '.statistic.unknown // 0'  allure-report/widgets/summary.json)
-	      TOTAL=$(jq -r '
-	        if (.statistic.total? // null) != null
-	        then .statistic.total
-	        else (.statistic.passed // 0) + (.statistic.failed // 0) +
-	             (.statistic.broken // 0) + (.statistic.skipped // 0) +
-	             (.statistic.unknown // 0)
-	        end
-	      ' allure-report/widgets/summary.json)
-	      DURATION_MS=$(jq -r '.time.duration // 0' allure-report/widgets/summary.json)
+          PASSED=$(jq -r '.statistic.passed  // 0'   allure-report/widgets/summary.json)
+          FAILED=$(jq -r '.statistic.failed  // 0'   allure-report/widgets/summary.json)
+          BROKEN=$(jq -r '.statistic.broken  // 0'   allure-report/widgets/summary.json)
+          SKIPPED=$(jq -r '.statistic.skipped // 0'  allure-report/widgets/summary.json)
+          UNKNOWN=$(jq -r '.statistic.unknown // 0'  allure-report/widgets/summary.json)
+          TOTAL=$(jq -r '
+            if (.statistic.total? // null) != null
+            then .statistic.total
+            else (.statistic.passed // 0) + (.statistic.failed // 0) +
+                 (.statistic.broken // 0) + (.statistic.skipped // 0) +
+                 (.statistic.unknown // 0)
+            end
+          ' allure-report/widgets/summary.json)
+          DURATION_MS=$(jq -r '.time.duration // 0' allure-report/widgets/summary.json)
 
-	      PASS_RATE=0
-	      if [ "$TOTAL" -gt 0 ]; then
-	        PASS_RATE=$(awk "BEGIN {printf \"%.2f\", ($PASSED*100)/$TOTAL}")
-	      fi
+          PASS_RATE=0
+          if [ "$TOTAL" -gt 0 ]; then
+            PASS_RATE=$(awk "BEGIN {printf \"%.2f\", ($PASSED*100)/$TOTAL}")
+          fi
 
-	      echo "Parsed metrics -> total=$TOTAL passed=$PASSED failed=$FAILED broken=$BROKEN skipped=$SKIPPED unknown=$UNKNOWN duration_ms=$DURATION_MS pass_rate=$PASS_RATE"
+          echo "Parsed metrics -> total=$TOTAL passed=$PASSED failed=$FAILED broken=$BROKEN skipped=$SKIPPED unknown=$UNKNOWN duration_ms=$DURATION_MS pass_rate=$PASS_RATE"
 
-	      {
-	        echo "# HELP automation_tests_total Total number of automated tests executed"
-	        echo "# TYPE automation_tests_total gauge"
-	        echo "automation_tests_total{project=\"${PROJECT_NAME}\",env=\"${ENVIRONMENT}\",branch=\"${BRANCH_NAME}\"} ${TOTAL}"
+          {
+            echo "# HELP automation_tests_total Total number of automated tests executed"
+            echo "# TYPE automation_tests_total gauge"
+            echo "automation_tests_total{project=\"${PROJECT_NAME}\",env=\"${ENVIRONMENT}\",branch=\"${BRANCH_NAME}\"} ${TOTAL}"
 
-	        echo "# HELP automation_tests_passed Total number of passed automated tests"
-	        echo "# TYPE automation_tests_passed gauge"
-	        echo "automation_tests_passed{project=\"${PROJECT_NAME}\",env=\"${ENVIRONMENT}\",branch=\"${BRANCH_NAME}\"} ${PASSED}"
+            echo "# HELP automation_tests_passed Total number of passed automated tests"
+            echo "# TYPE automation_tests_passed gauge"
+            echo "automation_tests_passed{project=\"${PROJECT_NAME}\",env=\"${ENVIRONMENT}\",branch=\"${BRANCH_NAME}\"} ${PASSED}"
 
-	        echo "# HELP automation_tests_failed Total number of failed automated tests"
-	        echo "# TYPE automation_tests_failed gauge"
-	        echo "automation_tests_failed{project=\"${PROJECT_NAME}\",env=\"${ENVIRONMENT}\",branch=\"${BRANCH_NAME}\"} ${FAILED}"
+            echo "# HELP automation_tests_failed Total number of failed automated tests"
+            echo "# TYPE automation_tests_failed gauge"
+            echo "automation_tests_failed{project=\"${PROJECT_NAME}\",env=\"${ENVIRONMENT}\",branch=\"${BRANCH_NAME}\"} ${FAILED}"
 
-	        echo "# HELP automation_tests_broken Total number of broken automated tests"
-	        echo "# TYPE automation_tests_broken gauge"
-	        echo "automation_tests_broken{project=\"${PROJECT_NAME}\",env=\"${ENVIRONMENT}\",branch=\"${BRANCH_NAME}\"} ${BROKEN}"
+            echo "# HELP automation_tests_broken Total number of broken automated tests"
+            echo "# TYPE automation_tests_broken gauge"
+            echo "automation_tests_broken{project=\"${PROJECT_NAME}\",env=\"${ENVIRONMENT}\",branch=\"${BRANCH_NAME}\"} ${BROKEN}"
 
-	        echo "# HELP automation_tests_skipped Total number of skipped automated tests"
-	        echo "# TYPE automation_tests_skipped gauge"
-	        echo "automation_tests_skipped{project=\"${PROJECT_NAME}\",env=\"${ENVIRONMENT}\",branch=\"${BRANCH_NAME}\"} ${SKIPPED}"
+            echo "# HELP automation_tests_skipped Total number of skipped automated tests"
+            echo "# TYPE automation_tests_skipped gauge"
+            echo "automation_tests_skipped{project=\"${PROJECT_NAME}\",env=\"${ENVIRONMENT}\",branch=\"${BRANCH_NAME}\"} ${SKIPPED}"
 
-	        echo "# HELP automation_tests_unknown Total number of tests with unknown status"
-	        echo "# TYPE automation_tests_unknown gauge"
-	        echo "automation_tests_unknown{project=\"${PROJECT_NAME}\",env=\"${ENVIRONMENT}\",branch=\"${BRANCH_NAME}\"} ${UNKNOWN}"
+            echo "# HELP automation_tests_unknown Total number of tests with unknown status"
+            echo "# TYPE automation_tests_unknown gauge"
+            echo "automation_tests_unknown{project=\"${PROJECT_NAME}\",env=\"${ENVIRONMENT}\",branch=\"${BRANCH_NAME}\"} ${UNKNOWN}"
 
-	        echo "# HELP automation_tests_duration_ms Total test execution duration in milliseconds"
-	        echo "# TYPE automation_tests_duration_ms gauge"
-	        echo "automation_tests_duration_ms{project=\"${PROJECT_NAME}\",env=\"${ENVIRONMENT}\",branch=\"${BRANCH_NAME}\"} ${DURATION_MS}"
+            echo "# HELP automation_tests_duration_ms Total test execution duration in milliseconds"
+            echo "# TYPE automation_tests_duration_ms gauge"
+            echo "automation_tests_duration_ms{project=\"${PROJECT_NAME}\",env=\"${ENVIRONMENT}\",branch=\"${BRANCH_NAME}\"} ${DURATION_MS}"
 
-	        echo "# HELP automation_tests_pass_rate_percent Pass rate of automated tests in percent"
-	        echo "# TYPE automation_tests_pass_rate_percent gauge"
-	        echo "automation_tests_pass_rate_percent{project=\"${PROJECT_NAME}\",env=\"${ENVIRONMENT}\",branch=\"${BRANCH_NAME}\"} ${PASS_RATE}"
-	      } > metrics.prom
+            echo "# HELP automation_tests_pass_rate_percent Pass rate of automated tests in percent"
+            echo "# TYPE automation_tests_pass_rate_percent gauge"
+            echo "automation_tests_pass_rate_percent{project=\"${PROJECT_NAME}\",env=\"${ENVIRONMENT}\",branch=\"${BRANCH_NAME}\"} ${PASS_RATE}"
+          } > metrics.prom
 
-	      echo "Generated metrics.prom:"
-	      cat metrics.prom
+          echo "Generated metrics.prom:"
+          cat metrics.prom
 
-	      HTTP_CODE=$(curl -s -o /tmp/prom_resp.txt -w "%{http_code}" \
-	        -u "${GRAFANA_PROM_USER}:${GRAFANA_PROM_API_KEY}" \
-	        -H "Content-Type: text/plain" \
-	        --data-binary @metrics.prom \
-	        "${GRAFANA_PROM_URL}" || true)
+          HTTP_CODE=$(curl -s -o /tmp/prom_resp.txt -w "%{http_code}" \
+            -u "${GRAFANA_PROM_USER}:${GRAFANA_PROM_API_KEY}" \
+            -H "Content-Type: text/plain" \
+            --data-binary @metrics.prom \
+            "${GRAFANA_PROM_URL}" || true)
 
-	      echo "Prometheus push HTTP code: ${HTTP_CODE}"
-	      echo "Response body:"
-	      cat /tmp/prom_resp.txt || echo "(empty)"
+          echo "Prometheus push HTTP code: ${HTTP_CODE}"
+          echo "Response body:"
+          cat /tmp/prom_resp.txt || echo "(empty)"
 
-	      if [ "${HTTP_CODE}" -ge 200 ] && [ "${HTTP_CODE}" -lt 300 ]; then
-	        echo "✅ Successfully pushed automation metrics to Grafana Prometheus"
-	      else
-	        echo "⚠️ Failed to push metrics to Grafana Prometheus (not failing the job)."
-	      fi
+          if [ "${HTTP_CODE}" -ge 200 ] && [ "${HTTP_CODE}" -lt 300 ]; then
+            echo "Successfully pushed automation metrics to Grafana Prometheus"
+          else
+            echo "Failed to push metrics to Grafana Prometheus (not failing the job)."
+          fi
