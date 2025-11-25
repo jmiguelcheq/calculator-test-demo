@@ -87,8 +87,6 @@ jobs:
           ENV: ${{ env.ENV }}
         run: |
           set -e
-          # Your framework likely reads ENV from env or from a system property;
-          # if needed you can add: -Denv="${ENV}"
           mvn -B clean test \
             -DbaseUrl="${BASE_URL}" \
             -Dheadless="${HEADLESS}"
@@ -133,54 +131,43 @@ jobs:
           name: allure-single-file
           path: target/allure-single
 
-      # ---------- Push summary to Grafana Loki ----------
-      - name: Push test metrics to Grafana Loki
+      # ---------- Push summary metrics to Grafana Prometheus ----------
+      - name: Push test metrics to Grafana Prometheus
         if: ${{ always() }}
         env:
-          LOKI_URL: ${{ secrets.GRAFANA_LOKI_URL }}
-          LOKI_USER: ${{ secrets.GRAFANA_LOKI_USER }}
-          LOKI_TOKEN: ${{ secrets.GRAFANA_LOKI_TOKEN }}
+          GRAFANA_PROM_URL: ${{ secrets.GRAFANA_PROM_URL }}
+          GRAFANA_PROM_USER: ${{ secrets.GRAFANA_PROM_USER }}
+          GRAFANA_PROM_API_KEY: ${{ secrets.GRAFANA_PROM_API_KEY }}
+          PROJECT_NAME: ${{ env.PROJECT_NAME }}
+          ENVIRONMENT: ${{ env.ENV }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_BRANCH: ${{ github.ref_name }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
         shell: bash
         run: |
           set -euo pipefail
 
-          # Validate secrets
-          for v in LOKI_URL LOKI_USER LOKI_TOKEN; do
-            if [ -z "${!v:-}" ]; then echo "❌ Missing env: $v"; exit 1; fi
-          done
-          echo "✅ Loki vars present. URL host: $(echo "$LOKI_URL" | sed -E 's#https?://([^/]+)/.*#\1#')"
+          # If Prometheus credentials are not set, just skip
+          if [ -z "${GRAFANA_PROM_URL:-}" ] || [ -z "${GRAFANA_PROM_USER:-}" ] || [ -z "${GRAFANA_PROM_API_KEY:-}" ]; then
+            echo "⚠️ Grafana Prometheus secrets not set. Skipping metrics push."
+            exit 0
+          fi
 
-          # Ensure jq
+          # Ensure jq is available
           if ! command -v jq >/dev/null 2>&1; then
             sudo apt-get update && sudo apt-get install -y jq
           fi
 
-          # Connectivity/auth probe
-          TS_NS=$(date +%s%N)
-          PROBE=$(jq -n --arg ts "$TS_NS" '{"streams":[{"stream":{"job":"ci-probe"},"values":[[$ts,"probe"]]}]}')
-          probe_code=$(curl -s -o /tmp/loki_probe.txt -w "%{http_code}" \
-            -u "${LOKI_USER}:${LOKI_TOKEN}" \
-            -H "Content-Type: application/json" \
-            -X POST "${LOKI_URL}" \
-            --data-raw "${PROBE}")
-          echo "Probe code: ${probe_code}"
-          if [[ "${probe_code}" -lt 200 || "${probe_code}" -ge 300 ]]; then
-            echo "❌ Probe push failed. Body:"; cat /tmp/loki_probe.txt || true
-            echo "- 401/403: bad token or wrong Stack ID (LOKI_USER)"
-            echo "- 404: wrong URL (must end with /loki/api/v1/push)"
-            exit 1
-          fi
-          echo "✅ Probe OK."
-
-          # Metrics (safe parsing)
           PASSED=0; FAILED=0; BROKEN=0; SKIPPED=0; UNKNOWN=0; TOTAL=0; DURATION_MS=0;
+
           if [ -f "allure-report/widgets/summary.json" ]; then
-            echo "Using allure-report/widgets/summary.json"
-            PASSED=$(jq -r '.statistic.passed  // 0' allure-report/widgets/summary.json)
-            FAILED=$(jq -r '.statistic.failed  // 0' allure-report/widgets/summary.json)
-            BROKEN=$(jq -r '.statistic.broken  // 0' allure-report/widgets/summary.json)
-            SKIPPED=$(jq -r '.statistic.skipped // 0' allure-report/widgets/summary.json)
-            UNKNOWN=$(jq -r '.statistic.unknown // 0' allure-report/widgets/summary.json)
+            echo "Using allure-report/widgets/summary.json for metrics"
+            PASSED=$(jq -r '.statistic.passed  // 0'   allure-report/widgets/summary.json)
+            FAILED=$(jq -r '.statistic.failed  // 0'   allure-report/widgets/summary.json)
+            BROKEN=$(jq -r '.statistic.broken  // 0'   allure-report/widgets/summary.json)
+            SKIPPED=$(jq -r '.statistic.skipped // 0'  allure-report/widgets/summary.json)
+            UNKNOWN=$(jq -r '.statistic.unknown // 0'  allure-report/widgets/summary.json)
             TOTAL=$(jq -r '
               if (.statistic.total? // null) != null
               then .statistic.total
@@ -190,91 +177,72 @@ jobs:
               end
             ' allure-report/widgets/summary.json)
             DURATION_MS=$(jq -r '.time.duration // 0' allure-report/widgets/summary.json)
-          elif compgen -G "target/allure-results/*-result.json" > /dev/null; then
-            echo "summary.json not found — deriving from target/allure-results/*-result.json"
-            PASSED=$(jq -s '[ .[] | select(.status=="passed") ]  | length' target/allure-results/*-result.json)
-            FAILED=$(jq -s '[ .[] | select(.status=="failed") ]  | length' target/allure-results/*-result.json)
-            BROKEN=$(jq -s '[ .[] | select(.status=="broken") ]  | length' target/allure-results/*-result.json)
-            SKIPPED=$(jq -s '[ .[] | select(.status=="skipped") ] | length' target/allure-results/*-result.json)
-            UNKNOWN=$(jq -s '[ .[] | select(.status=="unknown") ] | length' target/allure-results/*-result.json)
-            TOTAL=$((PASSED + FAILED + BROKEN + SKIPPED + UNKNOWN))
-            DURATION_MS=0
           else
-            echo "⚠️ No Allure results found. Skipping push to Loki."
+            echo "⚠️ Allure summary.json not found. Skipping Prometheus push."
             exit 0
           fi
 
           echo "Parsed metrics -> total=$TOTAL passed=$PASSED failed=$FAILED broken=$BROKEN skipped=$SKIPPED unknown=$UNKNOWN duration_ms=$DURATION_MS"
 
-          REPO="${{ github.repository }}"
-          RUN_ID="${{ github.run_id }}"
-          RUN_NUMBER="${{ github.run_number }}"
-          SHA="${{ github.sha }}"
-          BRANCH="${{ github.ref_name }}"
-          WORKFLOW="${{ github.workflow }}"
-          JOB="${{ github.job }}"
-          TS_ISO=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          TS_METRIC=$(date +%s%N)
-
-          LOG_OBJ=$(jq -n \
-            --arg ts_iso "$TS_ISO" \
-            --arg repo "$REPO" \
-            --arg project "${PROJECT_NAME}" \
-            --arg env "${ENV}" \
-            --arg workflow "$WORKFLOW" \
-            --arg job "$JOB" \
-            --arg run_id "$RUN_ID" \
-            --arg run_number "$RUN_NUMBER" \
-            --arg sha "$SHA" \
-            --arg branch "$BRANCH" \
-            --arg base_url "${{ steps.baseurl.outputs.BASE_URL }}" \
-            --arg headless "${HEADLESS}" \
-            --argjson passed ${PASSED:-0} \
-            --argjson failed ${FAILED:-0} \
-            --argjson broken ${BROKEN:-0} \
-            --argjson skipped ${SKIPPED:-0} \
-            --argjson unknown ${UNKNOWN:-0} \
-            --argjson total ${TOTAL:-0} \
-            --argjson duration_ms ${DURATION_MS:-0} \
-            '{
-              ts: $ts_iso, repo: $repo, project: $project, env: $env,
-              workflow: $workflow, job: $job, run_id: $run_id, run_number: $run_number,
-              sha: $sha, branch: $branch, base_url: $base_url, headless: $headless,
-              passed: $passed, failed: $failed, broken: $broken, skipped: $skipped,
-              unknown: $unknown, total: $total, duration_ms: $duration_ms,
-              pass_rate: (if $total > 0 then (($passed * 100.0) / $total) else 0 end)
-            }')
-
-          PAYLOAD=$(jq -n \
-            --arg ts "$TS_METRIC" \
-            --arg line "$(echo "$LOG_OBJ" | jq -c '.')" \
-            --arg job "ci-tests" \
-            --arg project "${PROJECT_NAME}" \
-            --arg env "${ENV}" \
-            --arg repo "$REPO" \
-            --arg branch "$BRANCH" \
-            --arg run_id "$RUN_ID" \
-            '{
-              streams: [
-                {
-                  stream: { job: $job, project: $project, env: $project, repo: $repo, branch: $branch, run_id: $run_id },
-                  values: [[ $ts, $line ]]
-                }
-              ]
-            }')
-
-          code=$(curl -v -s -o /tmp/loki_resp.txt -w "%{http_code}" \
-            -u "${LOKI_USER}:${LOKI_TOKEN}" \
-            -H "Content-Type: application/json" \
-            -X POST "${LOKI_URL}" \
-            --data-raw "${PAYLOAD}")
-
-          echo "Loki response code: ${code}"
-          echo "Loki response body:"; cat /tmp/loki_resp.txt || echo "(empty)"
-
-          if [[ "${code}" -ge 200 && "${code}" -lt 300 ]]; then
-            echo "✅ Successfully pushed to Grafana Loki"
-          else
-            echo "❌ Failed to push to Grafana Loki (code: ${code})"
-            exit 1
+          PASS_RATE=0
+          if [ "$TOTAL" -gt 0 ]; then
+            PASS_RATE=$(awk "BEGIN {printf \"%.2f\", ($PASSED*100)/$TOTAL}")
           fi
+
+          TS_EPOCH=$(date +%s)
+
+          cat > metrics.prom <<EOF
+# HELP automation_tests_total Total number of automated tests executed
+# TYPE automation_tests_total gauge
+automation_tests_total{project="${PROJECT_NAME}",env="${ENVIRONMENT}",branch="${GITHUB_BRANCH}"} ${TOTAL}
+
+# HELP automation_tests_passed Total number of passed automated tests
+# TYPE automation_tests_passed gauge
+automation_tests_passed{project="${PROJECT_NAME}",env="${ENVIRONMENT}",branch="${GITHUB_BRANCH}"} ${PASSED}
+
+# HELP automation_tests_failed Total number of failed automated tests
+# TYPE automation_tests_failed gauge
+automation_tests_failed{project="${PROJECT_NAME}",env="${ENVIRONMENT}",branch="${GITHUB_BRANCH}"} ${FAILED}
+
+# HELP automation_tests_broken Total number of broken automated tests
+# TYPE automation_tests_broken gauge
+automation_tests_broken{project="${PROJECT_NAME}",env="${ENVIRONMENT}",branch="${GITHUB_BRANCH}"} ${BROKEN}
+
+# HELP automation_tests_skipped Total number of skipped automated tests
+# TYPE automation_tests_skipped gauge
+automation_tests_skipped{project="${PROJECT_NAME}",env="${ENVIRONMENT}",branch="${GITHUB_BRANCH}"} ${SKIPPED}
+
+# HELP automation_tests_unknown Total number of tests with unknown status
+# TYPE automation_tests_unknown gauge
+automation_tests_unknown{project="${PROJECT_NAME}",env="${ENVIRONMENT}",branch="${GITHUB_BRANCH}"} ${UNKNOWN}
+
+# HELP automation_tests_duration_ms Total test execution duration in milliseconds
+# TYPE automation_tests_duration_ms gauge
+automation_tests_duration_ms{project="${PROJECT_NAME}",env="${ENVIRONMENT}",branch="${GITHUB_BRANCH}"} ${DURATION_MS}
+
+# HELP automation_tests_pass_rate_percent Pass rate of automated tests in percent
+# TYPE automation_tests_pass_rate_percent gauge
+automation_tests_pass_rate_percent{project="${PROJECT_NAME}",env="${ENVIRONMENT}",branch="${GITHUB_BRANCH}"} ${PASS_RATE}
+EOF
+
+          echo "Generated metrics.prom:"
+          cat metrics.prom
+
+          HTTP_CODE=$(curl -s -o /tmp/prom_resp.txt -w "%{http_code}" \
+            -u "${GRAFANA_PROM_USER}:${GRAFANA_PROM_API_KEY}" \
+            -H "Content-Type: text/plain" \
+            --data-binary @metrics.prom \
+            "${GRAFANA_PROM_URL}")
+
+          echo "Prometheus push HTTP code: ${HTTP_CODE}"
+          echo "Response body:"
+          cat /tmp/prom_resp.txt || echo "(empty)"
+
+          if [ "${HTTP_CODE}" -ge 200 ] && [ "${HTTP_CODE}" -lt 300 ]; then
+            echo "✅ Successfully pushed automation metrics to Grafana Prometheus"
+          else
+            echo "❌ Failed to push metrics to Grafana Prometheus"
+            # Don't fail the whole job just because metrics push failed
+            exit 0
+          fi
+
