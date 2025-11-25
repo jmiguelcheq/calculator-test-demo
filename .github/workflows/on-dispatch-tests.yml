@@ -140,15 +140,12 @@ jobs:
           GRAFANA_PROM_API_KEY: ${{ secrets.GRAFANA_PROM_API_KEY }}
           PROJECT_NAME: ${{ env.PROJECT_NAME }}
           ENVIRONMENT: ${{ env.ENV }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_BRANCH: ${{ github.ref_name }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+          BRANCH_NAME: ${{ github.ref_name }}
         shell: bash
         run: |
           set -euo pipefail
 
-          # If Prometheus credentials are not set, just skip
+          # Skip if Prometheus secrets are not configured
           if [ -z "${GRAFANA_PROM_URL:-}" ] || [ -z "${GRAFANA_PROM_USER:-}" ] || [ -z "${GRAFANA_PROM_API_KEY:-}" ]; then
             echo "⚠️ Grafana Prometheus secrets not set. Skipping metrics push."
             exit 0
@@ -159,70 +156,65 @@ jobs:
             sudo apt-get update && sudo apt-get install -y jq
           fi
 
-          PASSED=0; FAILED=0; BROKEN=0; SKIPPED=0; UNKNOWN=0; TOTAL=0; DURATION_MS=0;
-
-          if [ -f "allure-report/widgets/summary.json" ]; then
-            echo "Using allure-report/widgets/summary.json for metrics"
-            PASSED=$(jq -r '.statistic.passed  // 0'   allure-report/widgets/summary.json)
-            FAILED=$(jq -r '.statistic.failed  // 0'   allure-report/widgets/summary.json)
-            BROKEN=$(jq -r '.statistic.broken  // 0'   allure-report/widgets/summary.json)
-            SKIPPED=$(jq -r '.statistic.skipped // 0'  allure-report/widgets/summary.json)
-            UNKNOWN=$(jq -r '.statistic.unknown // 0'  allure-report/widgets/summary.json)
-            TOTAL=$(jq -r '
-              if (.statistic.total? // null) != null
-              then .statistic.total
-              else (.statistic.passed // 0) + (.statistic.failed // 0) +
-                   (.statistic.broken // 0) + (.statistic.skipped // 0) +
-                   (.statistic.unknown // 0)
-              end
-            ' allure-report/widgets/summary.json)
-            DURATION_MS=$(jq -r '.time.duration // 0' allure-report/widgets/summary.json)
-          else
+          if [ ! -f "allure-report/widgets/summary.json" ]; then
             echo "⚠️ Allure summary.json not found. Skipping Prometheus push."
             exit 0
           fi
 
-          echo "Parsed metrics -> total=$TOTAL passed=$PASSED failed=$FAILED broken=$BROKEN skipped=$SKIPPED unknown=$UNKNOWN duration_ms=$DURATION_MS"
+          PASSED=$(jq -r '.statistic.passed  // 0'   allure-report/widgets/summary.json)
+          FAILED=$(jq -r '.statistic.failed  // 0'   allure-report/widgets/summary.json)
+          BROKEN=$(jq -r '.statistic.broken  // 0'   allure-report/widgets/summary.json)
+          SKIPPED=$(jq -r '.statistic.skipped // 0'  allure-report/widgets/summary.json)
+          UNKNOWN=$(jq -r '.statistic.unknown // 0'  allure-report/widgets/summary.json)
+          TOTAL=$(jq -r '
+            if (.statistic.total? // null) != null
+            then .statistic.total
+            else (.statistic.passed // 0) + (.statistic.failed // 0) +
+                 (.statistic.broken // 0) + (.statistic.skipped // 0) +
+                 (.statistic.unknown // 0)
+            end
+          ' allure-report/widgets/summary.json)
+          DURATION_MS=$(jq -r '.time.duration // 0' allure-report/widgets/summary.json)
 
           PASS_RATE=0
           if [ "$TOTAL" -gt 0 ]; then
             PASS_RATE=$(awk "BEGIN {printf \"%.2f\", ($PASSED*100)/$TOTAL}")
           fi
 
-          TS_EPOCH=$(date +%s)
+          echo "Parsed metrics -> total=$TOTAL passed=$PASSED failed=$FAILED broken=$BROKEN skipped=$SKIPPED unknown=$UNKNOWN duration_ms=$DURATION_MS pass_rate=$PASS_RATE"
 
           cat > metrics.prom <<EOF
 # HELP automation_tests_total Total number of automated tests executed
 # TYPE automation_tests_total gauge
-automation_tests_total{project="${PROJECT_NAME}",env="${ENVIRONMENT}",branch="${GITHUB_BRANCH}"} ${TOTAL}
+automation_tests_total{project="${PROJECT_NAME}",env="${ENVIRONMENT}",branch="${BRANCH_NAME}"} ${TOTAL}
 
 # HELP automation_tests_passed Total number of passed automated tests
 # TYPE automation_tests_passed gauge
-automation_tests_passed{project="${PROJECT_NAME}",env="${ENVIRONMENT}",branch="${GITHUB_BRANCH}"} ${PASSED}
+automation_tests_passed{project="${PROJECT_NAME}",env="${ENVIRONMENT}",branch="${BRANCH_NAME}"} ${PASSED}
 
 # HELP automation_tests_failed Total number of failed automated tests
 # TYPE automation_tests_failed gauge
-automation_tests_failed{project="${PROJECT_NAME}",env="${ENVIRONMENT}",branch="${GITHUB_BRANCH}"} ${FAILED}
+automation_tests_failed{project="${PROJECT_NAME}",env="${ENVIRONMENT}",branch="${BRANCH_NAME}"} ${FAILED}
 
 # HELP automation_tests_broken Total number of broken automated tests
 # TYPE automation_tests_broken gauge
-automation_tests_broken{project="${PROJECT_NAME}",env="${ENVIRONMENT}",branch="${GITHUB_BRANCH}"} ${BROKEN}
+automation_tests_broken{project="${PROJECT_NAME}",env="${ENVIRONMENT}",branch="${BRANCH_NAME}"} ${BROKEN}
 
 # HELP automation_tests_skipped Total number of skipped automated tests
 # TYPE automation_tests_skipped gauge
-automation_tests_skipped{project="${PROJECT_NAME}",env="${ENVIRONMENT}",branch="${GITHUB_BRANCH}"} ${SKIPPED}
+automation_tests_skipped{project="${PROJECT_NAME}",env="${ENVIRONMENT}",branch="${BRANCH_NAME}"} ${SKIPPED}
 
 # HELP automation_tests_unknown Total number of tests with unknown status
 # TYPE automation_tests_unknown gauge
-automation_tests_unknown{project="${PROJECT_NAME}",env="${ENVIRONMENT}",branch="${GITHUB_BRANCH}"} ${UNKNOWN}
+automation_tests_unknown{project="${PROJECT_NAME}",env="${ENVIRONMENT}",branch="${BRANCH_NAME}"} ${UNKNOWN}
 
 # HELP automation_tests_duration_ms Total test execution duration in milliseconds
 # TYPE automation_tests_duration_ms gauge
-automation_tests_duration_ms{project="${PROJECT_NAME}",env="${ENVIRONMENT}",branch="${GITHUB_BRANCH}"} ${DURATION_MS}
+automation_tests_duration_ms{project="${PROJECT_NAME}",env="${ENVIRONMENT}",branch="${BRANCH_NAME}"} ${DURATION_MS}
 
 # HELP automation_tests_pass_rate_percent Pass rate of automated tests in percent
 # TYPE automation_tests_pass_rate_percent gauge
-automation_tests_pass_rate_percent{project="${PROJECT_NAME}",env="${ENVIRONMENT}",branch="${GITHUB_BRANCH}"} ${PASS_RATE}
+automation_tests_pass_rate_percent{project="${PROJECT_NAME}",env="${ENVIRONMENT}",branch="${BRANCH_NAME}"} ${PASS_RATE}
 EOF
 
           echo "Generated metrics.prom:"
@@ -232,7 +224,7 @@ EOF
             -u "${GRAFANA_PROM_USER}:${GRAFANA_PROM_API_KEY}" \
             -H "Content-Type: text/plain" \
             --data-binary @metrics.prom \
-            "${GRAFANA_PROM_URL}")
+            "${GRAFANA_PROM_URL}" || true)
 
           echo "Prometheus push HTTP code: ${HTTP_CODE}"
           echo "Response body:"
@@ -241,8 +233,5 @@ EOF
           if [ "${HTTP_CODE}" -ge 200 ] && [ "${HTTP_CODE}" -lt 300 ]; then
             echo "✅ Successfully pushed automation metrics to Grafana Prometheus"
           else
-            echo "❌ Failed to push metrics to Grafana Prometheus"
-            # Don't fail the whole job just because metrics push failed
-            exit 0
+            echo "⚠️ Failed to push metrics to Grafana Prometheus (not failing the job)."
           fi
-
