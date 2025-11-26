@@ -8,5 +8,5 @@ Feature: Calculator unit operations
       | firstNumber | secondNumber | operation | expected |
       | 2           | 3  		   | add       | 5        |
       | 10 	 		| 4  		   | subtract  | 6        |
-      | 7  			| 6  		   | multiply  | 42       |
-      | 10 			| 5  		   | divide    | 2        |
+      | 7  			| 6  		   | multiply  | 43       |
+      | 10 			| 5  		   | divide    | 3        |
