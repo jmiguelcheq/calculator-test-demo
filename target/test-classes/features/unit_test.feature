@@ -9,4 +9,4 @@ Feature: Calculator unit operations
       | 2           | 3  		   | add       | 6        |
       | 10 	 		| 4  		   | subtract  | 7        |
       | 7  			| 6  		   | multiply  | 43       |
-      | 10 			| 5  		   | divide    | 3        |
+      | 10 			| 5  		   | divide    | 2        |
