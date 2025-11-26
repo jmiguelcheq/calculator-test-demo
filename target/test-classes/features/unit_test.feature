@@ -7,6 +7,6 @@ Feature: Calculator unit operations
     Examples:
       | firstNumber | secondNumber | operation | expected |
       | 2           | 3  		   | add       | 6        |
-      | 10 	 		| 4  		   | subtract  | 6        |
-      | 7  			| 6  		   | multiply  | 41       |
-      | 10 			| 5  		   | divide    | 2        |
+      | 10 	 		| 4  		   | subtract  | 7        |
+      | 7  			| 6  		   | multiply  | 43       |
+      | 10 			| 5  		   | divide    | 3        |
