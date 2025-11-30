@@ -137,13 +137,14 @@ jobs:
           name: allure-single-file
           path: target/allure-single
 
-      # ---------- Push summary metrics to Grafana  ----------
-      - name: Push test metrics to Grafana Prometheus
+      # ---------- Push summary metrics to InfluxDB Cloud ----------
+      - name: Push test metrics to InfluxDB Cloud
         if: ${{ always() }}
         env:
-          GRAFANA_PROM_URL: ${{ secrets.GRAFANA_PROM_URL }}
-          GRAFANA_PROM_USER: ${{ secrets.GRAFANA_PROM_USER }}
-          GRAFANA_PROM_API_KEY: ${{ secrets.GRAFANA_PROM_API_KEY }}
+          INFLUX_URL: ${{ secrets.INFLUX_URL }}
+          INFLUX_ORG: ${{ secrets.INFLUX_ORG }}
+          INFLUX_BUCKET: ${{ secrets.INFLUX_BUCKET }}
+          INFLUX_TOKEN: ${{ secrets.INFLUX_TOKEN }}
           PROJECT_NAME: ${{ env.PROJECT_NAME }}
           ENVIRONMENT: ${{ env.ENV }}
           BRANCH_NAME: ${{ github.ref_name }}
@@ -151,9 +152,9 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Skip if Grafana/Influx secrets are not configured
-          if [ -z "${GRAFANA_PROM_URL:-}" ] || [ -z "${GRAFANA_PROM_USER:-}" ] || [ -z "${GRAFANA_PROM_API_KEY:-}" ]; then
-            echo "Grafana Influx URL / credentials not set. Skipping metrics push."
+          # Skip if InfluxDB secrets are not configured
+          if [ -z "${INFLUX_URL:-}" ] || [ -z "${INFLUX_ORG:-}" ] || [ -z "${INFLUX_BUCKET:-}" ] || [ -z "${INFLUX_TOKEN:-}" ]; then
+            echo "InfluxDB URL / org / bucket / token not set. Skipping metrics push."
             exit 0
           fi
 
@@ -200,18 +201,21 @@ jobs:
           echo "${LINE}" > metrics.influx
           cat metrics.influx
 
-          HTTP_CODE=$(curl -s -o /tmp/influx_resp.txt -w "%{http_code}" \
-            -u "${GRAFANA_PROM_USER}:${GRAFANA_PROM_API_KEY}" \
-            -H "Content-Type: text/plain" \
-            --data-binary @metrics.influx \
-            "${GRAFANA_PROM_URL}" || true)
+          # Push to InfluxDB Cloud
+          WRITE_URL="${INFLUX_URL%/}/api/v2/write?org=${INFLUX_ORG}&bucket=${INFLUX_BUCKET}&precision=s"
 
-          echo "Influx push HTTP code: ${HTTP_CODE}"
+          HTTP_CODE=$(curl -s -o /tmp/influx_resp.txt -w "%{http_code}" \
+            -H "Authorization: Token ${INFLUX_TOKEN}" \
+            -H "Content-Type: text/plain; charset=utf-8" \
+            --data-binary @metrics.influx \
+            "${WRITE_URL}" || true)
+
+          echo "InfluxDB push HTTP code: ${HTTP_CODE}"
           echo "Response body:"
           cat /tmp/influx_resp.txt || echo "(empty)"
 
           if [ "${HTTP_CODE}" -ge 200 ] && [ "${HTTP_CODE}" -lt 300 ]; then
-            echo "✅ Successfully pushed automation metrics to Grafana Cloud (Influx endpoint)"
+            echo "✅ Successfully pushed automation metrics to InfluxDB Cloud"
           else
-            echo "⚠️ Failed to push metrics to Grafana Cloud (not failing the job)."
+            echo "⚠️ Failed to push metrics to InfluxDB Cloud (not failing the job)."
           fi
